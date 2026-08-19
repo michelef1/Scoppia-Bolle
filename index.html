@@ -97,65 +97,141 @@
         }
 
         header {
-            width: 100%; max-width: 480px;
-            padding: 10px 12px;
-            display: flex; justify-content: space-between; align-items: center;
+            width: 95%;
+            max-width: 420px;
+            margin: 10px auto 5px auto;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             z-index: 10;
+            background: rgba(15, 32, 50, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         .brand-title {
-            font-size: 1.1rem; font-weight: 800;
-            color: var(--accent-color); line-height: 1.1;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            line-height: 1;
+            white-space: nowrap;
         }
 
         .user-tag {
-            font-size: 0.75rem; color: #81d4fa; font-weight: 600;
+            font-size: 0.7rem;
+            color: #81d4fa;
+            font-weight: 600;
+            line-height: 1;
+            margin-top: 3px;
         }
 
-        .score-boxes { display: flex; gap: 10px; align-items: center; }
+        .right-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .score-boxes { 
+            display: flex; 
+            gap: 6px; 
+            align-items: center; 
+        }
 
         .score-card {
             background: rgba(15, 32, 50, 0.85);
             border: 1px solid var(--border-color);
-            border-radius: 14px; padding: 6px 12px;
-            text-align: center; min-width: 65px;
-            position: relative;
+            border-radius: 10px;
+            padding: 4px 8px;
+            text-align: center;
+            min-width: 55px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
         .score-card.record {
-            border: 1.5px solid rgba(255, 183, 77, 0.5);
-            padding: 6px 14px;
+            border: 1px solid rgba(255, 183, 77, 0.6);
+            padding: 4px 8px;
         }
 
-        .score-label { font-size: 0.7rem; color: #81d4fa; font-weight: bold; }
-        .score-value { font-size: 1.2rem; font-weight: bold; color: #ffffff; }
-        .score-card.record .score-value { font-size: 1.5rem; color: var(--gold-color); }
+        .record-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            width: 100%;
+        }
+
+        .score-label { 
+            font-size: 0.6rem; 
+            color: #81d4fa; 
+            font-weight: bold; 
+        }
+
+        .score-value { 
+            font-size: 1.05rem; 
+            font-weight: bold; 
+            color: #ffffff; 
+            line-height: 1;
+            margin-top: 2px;
+        }
+
+        .score-card.record .score-value { 
+            color: var(--gold-color); 
+        }
 
         .share-btn {
-            position: absolute; top: -10px; right: -10px;
-            width: 32px; height: 32px; border-radius: 50%;
-            background: #0d1b2a; border: 2px solid #8d7747;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-            z-index: 5; padding: 0;
+            background: transparent;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 1px;
         }
 
-        .share-btn svg { width: 18px; height: 18px; fill: #38ef7d; }
+        .share-btn svg { width: 12px; height: 12px; fill: #38ef7d; }
 
         .menu-btn {
             background: rgba(15, 32, 50, 0.8);
-            color: white; border: 1px solid var(--border-color);
-            border-radius: 10px; font-size: 1.2rem; cursor: pointer;
-            width: 36px; height: 36px;
-            display: flex; align-items: center; justify-content: center;
-            margin-left: 8px; flex-shrink: 0;
+            color: white; 
+            border: 1px solid var(--border-color);
+            border-radius: 8px; 
+            font-size: 1.1rem; 
+            cursor: pointer;
+            width: 32px; 
+            height: 32px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            flex-shrink: 0;
         }
 
         #game-container {
-            flex: 1; width: 100%; max-width: 450px;
-            position: relative; display: flex;
-            justify-content: center; align-items: center;
-            touch-action: none; padding-bottom: 10px;
+            flex: 1; 
+            width: 100%; 
+            max-width: 420px;
+            position: relative; 
+            display: flex;
+            justify-content: center; 
+            align-items: center;
+            touch-action: none; 
+            padding-bottom: 10px;
         }
 
         canvas {
@@ -230,29 +306,30 @@
 <body>
 
     <header>
-        <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:1.5rem;">🫧</span>
-            <div>
+        <div class="brand-container">
+            <span style="font-size:1.2rem;">🫧</span>
+            <div class="brand-text">
                 <div class="brand-title">Scoppia Bolle</div>
-                <div class="user-tag" id="player-tag">Giocatore: -</div>
+                <div class="user-tag" id="player-tag">Miki</div>
             </div>
         </div>
 
-        <div style="display:flex; align-items:center;">
+        <div class="right-header">
             <div class="score-boxes">
                 <div class="score-card">
                     <span class="score-label" id="level-display">LIV. 1</span>
                     <div class="score-value" id="score">0</div>
                 </div>
+                
                 <div class="score-card record">
-                    <button class="share-btn" onclick="shareRecord()">
-                        <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg>
-                    </button>
-                    <div style="display:flex; justify-content:center; gap:4px; align-items:center;">
-                        <span>🏆</span><span class="score-label">RECORD</span>
+                    <div class="record-header-row">
+                        <span style="font-size:0.65rem;">🏆</span>
+                        <span class="score-label">REC</span>
+                        <button class="share-btn" onclick="shareRecord()" title="Condividi">
+                            <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg>
+                        </button>
                     </div>
-                    <div class="score-value" id="highscore">0</div>
-                    <div style="font-size:0.65rem; color:#b0bec5;" id="diff-tag">🌊 Medio</div>
+                    <div class="score-value" id="highscore">1090</div>
                 </div>
             </div>
 
@@ -341,7 +418,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v9';
+                const CACHE_NAME = 'scoppiabolle-v12';
                 self.addEventListener('install', e => {
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
                 });
@@ -496,7 +573,6 @@
             currentLevel = lvl;
             el.parentElement.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
             el.classList.add('active');
-            document.getElementById('diff-tag').innerText = ['🐥 Facile', '🌊 Medio', '🔥 Difficile'][lvl - 1];
         }
 
         function selectScenario(t, el) {
@@ -511,8 +587,8 @@
 
         function resizeCanvas() {
             const rect = container.getBoundingClientRect();
-            canvas.width = Math.min(rect.width - 20, 420);
-            canvas.height = Math.min(rect.height - 10, 580);
+            canvas.width = Math.min(rect.width - 20, 400);
+            canvas.height = Math.min(rect.height - 10, 560);
             const radWidth = canvas.width / (COLS * 2.15);
             const radHeight = (canvas.height - 80) / (ROWS * 1.732);
             BUBBLE_RADIUS = Math.floor(Math.min(radWidth, radHeight));
