@@ -209,7 +209,7 @@
                 <div style="display:flex; justify-content:center; gap:4px; align-items:center;">
                     <span>🏆</span><span class="score-label">RECORD</span>
                 </div>
-                <div class="score-value" id="highscore">3802</div>
+                <div class="score-value" id="highscore">0</div>
                 <div style="font-size:0.65rem; color:#b0bec5;" id="diff-tag">🌊 Medio</div>
             </div>
         </div>
@@ -300,7 +300,8 @@
         const COLORS = ['#e94560', '#00fff5', '#ffbd39', '#9b59b6', '#2ecc71'];
 
         let grid = [], currentBubble = null, nextBubble = null, bullet = null;
-        let score = 0, highscore = localStorage.getItem('scoppiabolle_highscore') || 3802;
+        let score = 0;
+        let highscore = parseInt(localStorage.getItem('scoppiabolle_highscore')) || 0;
         let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2, soundEnabled = true;
         let audioCtx = null, bgmTimer = null, bgmStep = 0, currentTrack = 'track1';
 
@@ -468,7 +469,7 @@
             const cx = e.touches ? e.touches[0].clientX : e.clientX;
             const cy = e.touches ? e.touches[0].clientY : e.clientY;
             const dx = (cx - rect.left) - currentBubble.x;
-            const dy = (cy - rect.top) - currentBubble.y;
+            const dy = (clientY - rect.top) - currentBubble.y;
             if (dy < -10) aimAngle = Math.atan2(dy, dx);
         }
 
