@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Scoppia Bolle</title>
+    
+    <!-- Meta tag PWA -->
+    <meta name="theme-color" content="#08121e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Scoppia Bolle">
+
+    <!-- Manifest dinamico generato via Blob -->
+    <script>
+        const manifestData = {
+            "name": "Scoppia Bolle",
+            "short_name": "ScoppiaBolle",
+            "description": "App Scoppia Bolle creata da Miki by Gemini",
+            "start_url": "./",
+            "display": "standalone",
+            "background_color": "#08121e",
+            "theme-color": "#08121e",
+            "orientation": "portrait",
+            "icons": [
+                {
+                    "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%234db6ac'/><circle cx='35' cy='35' r='12' fill='%23ffffff' opacity='0.5'/></svg>",
+                    "sizes": "192x192 512x512",
+                    "type": "image/svg+xml",
+                    "purpose": "any maskable"
+                }
+            ]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifestURL;
+        document.head.appendChild(link);
+    </script>
+
+    <style>
+        :root {
+            --bg-color: #08121e;
+            --panel-bg: rgba(13, 27, 42, 0.95);
+            --card-bg: rgba(20, 40, 65, 0.7);
+            --border-color: #1e3d59;
+            --accent-color: #4db6ac;
+            --text-color: #e0f2f1;
+            --gold-color: #ffb74d;
+        }
+
+        body.theme-alghe { --bg-color: #0a1f1c; --card-bg: rgba(18, 48, 40, 0.7); --accent-color: #2ecc71; }
+        body.theme-abisso { --bg-color: #0b0c10; --card-bg: rgba(20, 22, 35, 0.7); --accent-color: #9b59b6; }
+        body.theme-grotta { --bg-color: #1a092b; --card-bg: rgba(45, 18, 70, 0.7); --accent-color: #e040fb; }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0; padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+        }
+
+        header {
+            width: 100%; max-width: 480px;
+            padding: 10px 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 10;
+        }
+
+        .brand-title {
+            font-size: 1.1rem; font-weight: 800;
+            color: var(--accent-color); line-height: 1.1;
+        }
+
+        .score-boxes { display: flex; gap: 12px; align-items: center; }
+
+        .score-card {
+            background: rgba(15, 32, 50, 0.85);
+            border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 6px 12px;
+            text-align: center; min-width: 70px;
+            position: relative;
+        }
+
+        .score-card.record {
+            border: 1.5px solid rgba(255, 183, 77, 0.5);
+            padding: 6px 14px;
+        }
+
+        .score-label { font-size: 0.7rem; color: #81d4fa; font-weight: bold; }
+        .score-value { font-size: 1.2rem; font-weight: bold; color: #ffffff; }
+        .score-card.record .score-value { font-size: 1.5rem; color: var(--gold-color); }
+
+        .share-btn {
+            position: absolute; top: -10px; right: -10px;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #0d1b2a; border: 2px solid #8d7747;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            z-index: 5; padding: 0;
+        }
+
+        .share-btn svg { width: 18px; height: 18px; fill: #38ef7d; }
+
+        .menu-btn {
+            background: rgba(15, 32, 50, 0.8);
+            color: white; border: 1px solid var(--border-color);
+            border-radius: 10px; font-size: 1.2rem; cursor: pointer;
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        #game-container {
+            flex: 1; width: 100%; max-width: 450px;
+            position: relative; display: flex;
+            justify-content: center; align-items: center;
+            touch-action: none; padding-bottom: 10px;
+        }
+
+        canvas {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: block;
+        }
+
+        .modal {
+            display: flex; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(4, 10, 18, 0.85);
+            backdrop-filter: blur(4px); z-index: 100;
+            justify-content: center; align-items: center;
+        }
+
+        .modal-content {
+            background: var(--panel-bg);
+            border: 1.5px solid var(--accent-color);
+            padding: 20px; border-radius: 20px;
+            max-width: 360px; width: 90%; text-align: center;
+        }
+
+        .modal-title { font-size: 1.4rem; color: var(--accent-color); font-weight: bold; }
+        .section-title { font-size: 0.75rem; color: #81d4fa; font-weight: bold; margin: 14px 0 8px; }
+
+        .options-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .options-grid.scenarios { grid-template-columns: repeat(2, 1fr); }
+
+        .option-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 10px 6px;
+            cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+
+        .option-card.active {
+            border-color: var(--accent-color);
+            background: rgba(77, 182, 172, 0.2);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: #000; border: none; padding: 12px;
+            border-radius: 12px; font-size: 1rem; cursor: pointer;
+            font-weight: bold; width: 100%; margin-top: 16px;
+        }
+
+        .row-setting {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .row-setting select {
+            background: #102a43; color: #fff;
+            border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 6px;
+        }
+
+        .app-credits { margin-top: 16px; font-size: 0.75rem; color: #81d4fa; font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:1.5rem;">🫧</span>
+            <div class="brand-title">Scoppia<br>Bolle</div>
+        </div>
+
+        <div class="score-boxes">
+            <div class="score-card">
+                <span class="score-label">PUNTI</span>
+                <div class="score-value" id="score">0</div>
+            </div>
+            <div class="score-card record">
+                <button class="share-btn" onclick="shareRecord()">
+                    <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg>
+                </button>
+                <div style="display:flex; justify-content:center; gap:4px; align-items:center;">
+                    <span>🏆</span><span class="score-label">RECORD</span>
+                </div>
+                <div class="score-value" id="highscore">3802</div>
+                <div style="font-size:0.65rem; color:#b0bec5;" id="diff-tag">🌊 Medio</div>
+            </div>
+        </div>
+
+        <button class="menu-btn" onclick="openModal('options-modal')">&#8942;</button>
+    </header>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Modal Menu Iniziale -->
+    <div id="start-modal" class="modal">
+        <div class="modal-content">
+            <div style="font-size:2.2rem;">🫧</div>
+            <div class="modal-title">Scoppia Bolle</div>
+            <div style="font-size:0.8rem; color:#b0bec5;">Combina e scoppia le bolle dello stesso colore</div>
+
+            <div class="section-title">DIFFICOLTÀ</div>
+            <div class="options-grid">
+                <div class="option-card" onclick="selectDifficulty(1, this)"><span>🐥</span><span>Facile</span></div>
+                <div class="option-card active" onclick="selectDifficulty(2, this)"><span>🌊</span><span>Medio</span></div>
+                <div class="option-card" onclick="selectDifficulty(3, this)"><span>🔥</span><span>Difficile</span></div>
+            </div>
+
+            <div class="section-title">SCENARIO MARINO</div>
+            <div class="options-grid scenarios">
+                <div class="option-card active" onclick="selectScenario('default', this)"><span>🪸</span><span>Corallina</span></div>
+                <div class="option-card" onclick="selectScenario('theme-alghe', this)"><span>🌿</span><span>Alghe</span></div>
+                <div class="option-card" onclick="selectScenario('theme-abisso', this)"><span>🌌</span><span>Abisso</span></div>
+                <div class="option-card" onclick="selectScenario('theme-grotta', this)"><span>💎</span><span>Grotta</span></div>
+            </div>
+
+            <button class="btn-start" onclick="startGame()">Inizia 🌊</button>
+            <div class="app-credits">App Scoppia Bolle creata da Miki by Gemini</div>
+        </div>
+    </div>
+
+    <!-- Modal Impostazioni -->
+    <div id="options-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-title" style="margin-bottom:15px;">Opzioni</div>
+            
+            <div class="row-setting">
+                <span>Effetti Sonori</span>
+                <input type="checkbox" id="sound-check" checked onchange="toggleAudio(this.checked)">
+            </div>
+
+            <div class="row-setting">
+                <span>Musica di Sfondo</span>
+                <select id="music-select" onchange="changeMusic(this.value)">
+                    <option value="none">Nessuna</option>
+                    <option value="track1" selected>Traccia 1 - Chill</option>
+                    <option value="track2">Traccia 2 - Retro</option>
+                    <option value="track3">Traccia 3 - Deep</option>
+                </select>
+            </div>
+
+            <button class="btn-start" onclick="closeModal('options-modal'); openModal('start-modal');" style="background:#1e3d59; color:#fff;">Cambia Livello</button>
+            <button class="btn-start" onclick="closeModal('options-modal')" style="background:#444; color:#fff; margin-top:8px;">Chiudi</button>
+
+            <div class="app-credits">App Scoppia Bolle creata da Miki by Gemini</div>
+        </div>
+    </div>
+
+    <script>
+        // Registrazione Service Worker per PWA Offline
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                const CACHE_NAME = 'scoppiabolle-v1';
+                self.addEventListener('install', e => {
+                    e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
+                });
+                self.addEventListener('fetch', e => {
+                    e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+                });
+            `;
+            const blob = new Blob([swCode], {type: 'application/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('game-container');
+
+        const COLS = 8, ROWS = 10;
+        let BUBBLE_RADIUS = 20;
+        const COLORS = ['#e94560', '#00fff5', '#ffbd39', '#9b59b6', '#2ecc71'];
+
+        let grid = [], currentBubble = null, nextBubble = null, bullet = null;
+        let score = 0, highscore = localStorage.getItem('scoppiabolle_highscore') || 3802;
+        let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2, soundEnabled = true;
+        let audioCtx = null, bgmTimer = null, bgmStep = 0, currentTrack = 'track1';
+
+        const MUSIC_TRACKS = {
+            track1: [261.63, 329.63, 392.00, 523.25, 392.00, 329.63],
+            track2: [440.00, 554.37, 659.25, 880.00, 659.25, 554.37],
+            track3: [196.00, 246.94, 293.66, 392.00, 293.66, 246.94]
+        };
+
+        document.getElementById('highscore').innerText = highscore;
+
+        function shareRecord() {
+            const text = `Ho realizzato un record di ${highscore} punti a Scoppia Bolle! Riesci a fare di meglio?`;
+            if (navigator.share) {
+                navigator.share({ title: 'Scoppia Bolle', text: text, url: window.location.href }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(text);
+                alert('Punteggio record copiato!');
+            }
+        }
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            startBGM();
+        }
+
+        function playSound(type) {
+            if (!soundEnabled || !audioCtx) return;
+            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'shoot') {
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+            } else {
+                osc.frequency.setValueAtTime(500, now);
+                osc.frequency.exponentialRampToValueAtTime(180, now + 0.15);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+            }
+            osc.start(now); osc.stop(now + 0.15);
+        }
+
+        function startBGM() {
+            if (bgmTimer) clearInterval(bgmTimer);
+            if (currentTrack === 'none') return;
+
+            bgmTimer = setInterval(() => {
+                if (!soundEnabled || !audioCtx || currentTrack === 'none') return;
+                const notes = MUSIC_TRACKS[currentTrack];
+                if (!notes) return;
+
+                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(notes[bgmStep % notes.length], audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+                bgmStep++;
+            }, 320);
+        }
+
+        function changeMusic(t) { currentTrack = t; bgmStep = 0; startBGM(); }
+        function selectDifficulty(lvl, el) {
+            currentLevel = lvl;
+            el.parentElement.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('diff-tag').innerText = ['🐥 Facile', '🌊 Medio', '🔥 Difficile'][lvl - 1];
+        }
+
+        function selectScenario(t, el) {
+            document.body.className = t === 'default' ? '' : t;
+            el.parentElement.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        function startGame() { closeModal('start-modal'); initAudio(); resetGame(); }
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function toggleAudio(e) { soundEnabled = e; if (!e && bgmTimer) clearInterval(bgmTimer); else if(e) startBGM(); }
+
+        function resizeCanvas() {
+            const rect = container.getBoundingClientRect();
+            canvas.width = Math.min(rect.width - 20, 420);
+            canvas.height = Math.min(rect.height - 10, 580);
+            BUBBLE_RADIUS = Math.floor(canvas.width / (COLS * 2.15));
+            updateGridPositions();
+        }
+
+        class Bubble {
+            constructor(x, y, colorIndex) {
+                this.x = x; this.y = y;
+                this.colorIndex = colorIndex;
+                this.color = COLORS[colorIndex];
+                this.vx = 0; this.vy = 0;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, BUBBLE_RADIUS - 1, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x - BUBBLE_RADIUS / 3, this.y - BUBBLE_RADIUS / 3, BUBBLE_RADIUS / 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.45)'; ctx.fill();
+            }
+        }
+
+        function getBubbleTilePos(r, c) {
+            const offset = (r % 2 === 1) ? BUBBLE_RADIUS : 0;
+            return {
+                x: c * (BUBBLE_RADIUS * 2) + BUBBLE_RADIUS + 10 + offset,
+                y: r * (BUBBLE_RADIUS * 1.75) + BUBBLE_RADIUS + 15
+            };
+        }
+
+        function updateGridPositions() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r] && grid[r][c]) {
+                        const pos = getBubbleTilePos(r, c);
+                        grid[r][c].x = pos.x; grid[r][c].y = pos.y;
+                    }
+                }
+            }
+            if (currentBubble && !bullet) {
+                currentBubble.x = canvas.width / 2;
+                currentBubble.y = canvas.height - BUBBLE_RADIUS * 2.2;
+            }
+        }
+
+        function initGrid() {
+            grid = [];
+            for (let r = 0; r < ROWS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    if (r < 4) {
+                        const pos = getBubbleTilePos(r, c);
+                        grid[r][c] = new Bubble(pos.x, pos.y, Math.floor(Math.random() * COLORS.length));
+                    } else grid[r][c] = null;
+                }
+            }
+        }
+
+        function createShooterBubbles() {
+            const sy = canvas.height - BUBBLE_RADIUS * 2.2;
+            if (!nextBubble) nextBubble = new Bubble(BUBBLE_RADIUS * 2, sy, Math.floor(Math.random() * COLORS.length));
+            currentBubble = new Bubble(canvas.width / 2, sy, nextBubble.colorIndex);
+            nextBubble = new Bubble(BUBBLE_RADIUS * 2, sy, Math.floor(Math.random() * COLORS.length));
+        }
+
+        function resetGame() {
+            score = 0; document.getElementById('score').innerText = score;
+            bullet = null; initGrid(); createShooterBubbles();
+        }
+
+        function handleInputStart(e) { initAudio(); if (!bullet) { isAiming = true; updateAim(e); } }
+        function handleInputMove(e) { if (isAiming) updateAim(e); }
+        function handleInputEnd() { if (isAiming && !bullet) { isAiming = false; fireBubble(); } }
+
+        function updateAim(e) {
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            const dx = (cx - rect.left) - currentBubble.x;
+            const dy = (cy - rect.top) - currentBubble.y;
+            if (dy < -10) aimAngle = Math.atan2(dy, dx);
+        }
+
+        function fireBubble() {
+            const speed = currentLevel === 1 ? 12 : currentLevel === 2 ? 16 : 20;
+            bullet = currentBubble;
+            bullet.vx = Math.cos(aimAngle) * speed;
+            bullet.vy = Math.sin(aimAngle) * speed;
+            playSound('shoot');
+        }
+
+        function update() {
+            if (bullet) {
+                bullet.x += bullet.vx; bullet.y += bullet.vy;
+                if (bullet.x - BUBBLE_RADIUS <= 0 || bullet.x + BUBBLE_RADIUS >= canvas.width) bullet.vx *= -1;
+                if (bullet.y - BUBBLE_RADIUS <= 0 || checkCollision()) {
+                    snapToGrid(); bullet = null; createShooterBubbles();
+                }
+            }
+        }
+
+        function checkCollision() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] && Math.hypot(bullet.x - grid[r][c].x, bullet.y - grid[r][c].y) < BUBBLE_RADIUS * 1.7) return true;
+                }
+            }
+            return false;
+        }
+
+        function snapToGrid() {
+            let closestR = 0, closestC = 0, minDist = Infinity;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const pos = getBubbleTilePos(r, c);
+                    const dist = Math.hypot(bullet.x - pos.x, bullet.y - pos.y);
+                    if (dist < minDist) { minDist = dist; closestR = r; closestC = c; }
+                }
+            }
+            const pos = getBubbleTilePos(closestR, closestC);
+            bullet.x = pos.x; bullet.y = pos.y;
+            grid[closestR][closestC] = bullet;
+            checkMatches(closestR, closestC);
+        }
+
+        function checkMatches(startR, startC) {
+            const target = grid[startR][startC].colorIndex, matches = [];
+            const visited = Array(ROWS).fill().map(() => Array(COLS).fill(false));
+
+            function floodFill(r, c) {
+                if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+                if (visited[r][c] || !grid[r][c] || grid[r][c].colorIndex !== target) return;
+                visited[r][c] = true; matches.push({ r, c });
+                [
+                    { r: r-1, c: c }, { r: r+1, c: c }, { r: r, c: c-1 }, { r: r, c: c+1 },
+                    { r: r-1, c: c + (r % 2 === 1 ? 1 : -1) }, { r: r+1, c: c + (r % 2 === 1 ? 1 : -1) }
+                ].forEach(n => floodFill(n.r, n.c));
+            }
+
+            floodFill(startR, startC);
+            if (matches.length >= 3) {
+                playSound('pop');
+                matches.forEach(m => { grid[m.r][m.c] = null; });
+                score += matches.length * 10;
+                document.getElementById('score').innerText = score;
+                if (score > highscore) {
+                    highscore = score;
+                    localStorage.setItem('scoppiabolle_highscore', highscore);
+                    document.getElementById('highscore').innerText = highscore;
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r] && grid[r][c]) grid[r][c].draw();
+                }
+            }
+            if (isAiming && currentLevel !== 3 && currentBubble) {
+                ctx.beginPath();
+                ctx.moveTo(currentBubble.x, currentBubble.y);
+                ctx.lineTo(currentBubble.x + Math.cos(aimAngle) * 140, currentBubble.y + Math.sin(aimAngle) * 140);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+            }
+            if (currentBubble) currentBubble.draw();
+        }
+
+        function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+
+        canvas.addEventListener('mousedown', handleInputStart);
+        canvas.addEventListener('mousemove', handleInputMove);
+        window.addEventListener('mouseup', handleInputEnd);
+        canvas.addEventListener('touchstart', handleInputStart, { passive: true });
+        canvas.addEventListener('touchmove', handleInputMove, { passive: true });
+        window.addEventListener('touchend', handleInputEnd);
+        window.addEventListener('resize', resizeCanvas);
+
+        window.onload = () => { resizeCanvas(); initGrid(); gameLoop(); };
+    </script>
+</body>
+</html>
