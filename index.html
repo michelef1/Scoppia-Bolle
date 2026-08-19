@@ -234,6 +234,17 @@
             padding-bottom: 10px;
         }
 
+        /* Su schermi più larghi (PC/tablet) il tabellone si ingrandisce
+           per non restare piccolo e isolato in mezzo a tanto spazio vuoto */
+        @media (min-width: 700px) {
+            header { max-width: 520px; }
+            #game-container { max-width: 520px; }
+        }
+        @media (min-width: 1000px) {
+            header { max-width: 600px; }
+            #game-container { max-width: 600px; }
+        }
+
         canvas {
             background: var(--canvas-bg);
             border-radius: 16px;
@@ -485,7 +496,7 @@
         let soundEnabled = true;
         let musicEnabled = true;
         let audioCtx = null, bgmTimer = null, padTimer = null, bgmStep = 0, currentTrack = 'track4';
-        let musicFilter = null, musicMasterGain = null, musicDelay = null, musicFeedback = null;
+        let musicFilter = null, musicMasterGain = null, musicDelay = null, musicFeedback = null, musicWetGain = null, musicCompressor = null;
 
         // Profili musicali generativi: root (Hz), scala (semitoni), tempo arpeggio (ms),
         // forma d'onda, taglio filtro lowpass e accordo del pad (in semitoni sulla root/2).
@@ -550,6 +561,19 @@
             if (padTimer) { clearInterval(padTimer); padTimer = null; }
         }
 
+        function silenceMusicGraph() {
+            // Azzera rapidamente il volume per tagliare di netto eventuali code sonore
+            // della traccia precedente, evitando che si sovrappongano alla nuova.
+            if (!audioCtx || !musicMasterGain || !musicWetGain) return;
+            const now = audioCtx.currentTime;
+            musicMasterGain.gain.cancelScheduledValues(now);
+            musicMasterGain.gain.setValueAtTime(musicMasterGain.gain.value, now);
+            musicMasterGain.gain.linearRampToValueAtTime(0.0001, now + 0.04);
+            musicWetGain.gain.cancelScheduledValues(now);
+            musicWetGain.gain.setValueAtTime(musicWetGain.gain.value, now);
+            musicWetGain.gain.linearRampToValueAtTime(0.0001, now + 0.04);
+        }
+
         function setupMusicGraph() {
             if (musicFilter) return;
             musicFilter = audioCtx.createBiquadFilter();
@@ -557,20 +581,34 @@
             musicFilter.frequency.value = 1800;
             musicFilter.Q.value = 0.7;
 
-            musicMasterGain = audioCtx.createGain();
-            musicMasterGain.gain.value = 1;
+            // Compressore finale per evitare distorsione/clipping ("audio frizzato")
+            musicCompressor = audioCtx.createDynamicsCompressor();
+            musicCompressor.threshold.value = -18;
+            musicCompressor.knee.value = 20;
+            musicCompressor.ratio.value = 6;
+            musicCompressor.attack.value = 0.01;
+            musicCompressor.release.value = 0.25;
+            musicCompressor.connect(audioCtx.destination);
 
+            // Percorso "secco" (dry): suono diretto, pulito
+            musicMasterGain = audioCtx.createGain();
+            musicMasterGain.gain.value = 0.9;
+            musicMasterGain.connect(musicCompressor);
+
+            // Percorso "wet" (eco/delay), completamente separato dal dry per evitare loop doppi
             musicDelay = audioCtx.createDelay();
             musicDelay.delayTime.value = 0.28;
             musicFeedback = audioCtx.createGain();
-            musicFeedback.gain.value = 0.22;
+            musicFeedback.gain.value = 0.18;
+            musicWetGain = audioCtx.createGain();
+            musicWetGain.gain.value = 0.25;
 
             musicFilter.connect(musicMasterGain);
-            musicMasterGain.connect(audioCtx.destination);
-            musicMasterGain.connect(musicDelay);
+            musicFilter.connect(musicDelay);
             musicDelay.connect(musicFeedback);
             musicFeedback.connect(musicDelay);
-            musicDelay.connect(musicMasterGain);
+            musicDelay.connect(musicWetGain);
+            musicWetGain.connect(musicCompressor);
         }
 
         function playArpNote(profile) {
@@ -639,13 +677,20 @@
 
         function startBGM() {
             stopBGM();
+            silenceMusicGraph();
             if (!musicEnabled || currentTrack === 'none' || document.hidden || !audioCtx) return;
 
             setupMusicGraph();
             const profile = MUSIC_PROFILES[currentTrack];
             if (!profile) return;
 
-            musicFilter.frequency.setTargetAtTime(profile.filter, audioCtx.currentTime, 0.4);
+            const now = audioCtx.currentTime;
+            musicFilter.frequency.setTargetAtTime(profile.filter, now, 0.4);
+            musicMasterGain.gain.setValueAtTime(0.0001, now + 0.04);
+            musicMasterGain.gain.linearRampToValueAtTime(0.9, now + 0.18);
+            musicWetGain.gain.setValueAtTime(0.0001, now + 0.04);
+            musicWetGain.gain.linearRampToValueAtTime(0.25, now + 0.18);
+
             bgmStep = 0;
             playPadChord(profile);
             padTimer = setInterval(() => {
@@ -686,8 +731,12 @@
 
         function resizeCanvas() {
             const rect = container.getBoundingClientRect();
-            canvas.width = Math.min(rect.width - 20, 400);
-            canvas.height = Math.min(rect.height - 10, 560);
+            // I limiti massimi crescono su schermi più larghi (PC/tablet),
+            // così il tabellone non resta piccolo e isolato su desktop.
+            const maxW = window.innerWidth >= 1000 ? 580 : (window.innerWidth >= 700 ? 500 : 400);
+            const maxH = window.innerWidth >= 1000 ? 780 : (window.innerWidth >= 700 ? 660 : 560);
+            canvas.width = Math.min(rect.width - 20, maxW);
+            canvas.height = Math.min(rect.height - 10, maxH);
             const radWidth = canvas.width / (COLS * 2.15);
             const radHeight = (canvas.height - 80) / (ROWS * 1.732);
             BUBBLE_RADIUS = Math.floor(Math.min(radWidth, radHeight));
