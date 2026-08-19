@@ -41,7 +41,9 @@
 
     <style>
         :root {
-            --bg-color: #08121e;
+            --bg-color: #0b1a2d;
+            --bg-gradient: linear-gradient(180deg, #0f2b48 0%, #08121e 100%);
+            --canvas-bg: rgba(7, 20, 36, 0.7);
             --panel-bg: rgba(13, 27, 42, 0.95);
             --card-bg: rgba(20, 40, 65, 0.7);
             --border-color: #1e3d59;
@@ -50,9 +52,29 @@
             --gold-color: #ffb74d;
         }
 
-        body.theme-alghe { --bg-color: #0a1f1c; --card-bg: rgba(18, 48, 40, 0.7); --accent-color: #2ecc71; }
-        body.theme-abisso { --bg-color: #0b0c10; --card-bg: rgba(20, 22, 35, 0.7); --accent-color: #9b59b6; }
-        body.theme-grotta { --bg-color: #1a092b; --card-bg: rgba(45, 18, 70, 0.7); --accent-color: #e040fb; }
+        body.theme-alghe {
+            --bg-gradient: linear-gradient(180deg, #0d382c 0%, #051a14 100%);
+            --canvas-bg: rgba(5, 30, 22, 0.7);
+            --card-bg: rgba(18, 48, 40, 0.7);
+            --border-color: #1b5e20;
+            --accent-color: #2ecc71;
+        }
+
+        body.theme-abisso {
+            --bg-gradient: linear-gradient(180deg, #1f1035 0%, #080312 100%);
+            --canvas-bg: rgba(20, 8, 38, 0.7);
+            --card-bg: rgba(35, 18, 55, 0.7);
+            --border-color: #4a148c;
+            --accent-color: #ab47bc;
+        }
+
+        body.theme-grotta {
+            --bg-gradient: linear-gradient(180deg, #2c1a0e 0%, #120904 100%);
+            --canvas-bg: rgba(30, 15, 8, 0.7);
+            --card-bg: rgba(50, 28, 15, 0.7);
+            --border-color: #6d4c41;
+            --accent-color: #ff7043;
+        }
 
         * {
             box-sizing: border-box;
@@ -62,7 +84,8 @@
         }
 
         body {
-            background-color: var(--bg-color);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
             color: var(--text-color);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
@@ -70,6 +93,7 @@
             align-items: center;
             height: 100vh; width: 100vw;
             overflow: hidden;
+            transition: background 0.4s ease;
         }
 
         header {
@@ -134,10 +158,12 @@
         }
 
         canvas {
-            background: rgba(0, 0, 0, 0.25);
+            background: var(--canvas-bg);
             border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1.5px solid var(--border-color);
             display: block;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transition: background 0.4s ease, border-color 0.4s ease;
         }
 
         .modal {
@@ -170,7 +196,8 @@
 
         .option-card.active {
             border-color: var(--accent-color);
-            background: rgba(77, 182, 172, 0.2);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 8px var(--accent-color);
         }
 
         .name-input {
@@ -301,7 +328,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v2';
+                const CACHE_NAME = 'scoppiabolle-v4';
                 self.addEventListener('install', e => {
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
                 });
@@ -328,14 +355,13 @@
         let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2, soundEnabled = true;
         let audioCtx = null, bgmTimer = null, bgmStep = 0, currentTrack = 'track4';
 
-        // Tracce musicali (comprese le nuove opzioni allegre)
         const MUSIC_TRACKS = {
             track1: [261.63, 329.63, 392.00, 523.25, 392.00, 329.63],
             track2: [440.00, 554.37, 659.25, 880.00, 659.25, 554.37],
             track3: [196.00, 246.94, 293.66, 392.00, 293.66, 246.94],
-            track4: [261.63, 329.63, 392.00, 523.25, 659.25, 523.25, 392.00, 329.63], // Solar Beat
-            track5: [329.63, 392.00, 493.88, 523.25, 587.33, 523.25, 493.88, 392.00], // Upbeat Pop
-            track6: [392.00, 440.00, 493.88, 523.25, 587.33, 659.25, 587.33, 523.25]  // Bubble Dance
+            track4: [261.63, 329.63, 392.00, 523.25, 659.25, 523.25, 392.00, 329.63],
+            track5: [329.63, 392.00, 493.88, 523.25, 587.33, 523.25, 493.88, 392.00],
+            track6: [392.00, 440.00, 493.88, 523.25, 587.33, 659.25, 587.33, 523.25]
         };
 
         document.getElementById('highscore').innerText = highscore;
@@ -377,12 +403,21 @@
 
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (audioCtx.state === 'suspended' && document.visibilityState === 'visible') {
+                audioCtx.resume();
+            }
             startBGM();
         }
 
+        function stopBGM() {
+            if (bgmTimer) {
+                clearInterval(bgmTimer);
+                bgmTimer = null;
+            }
+        }
+
         function playSound(type) {
-            if (!soundEnabled || !audioCtx) return;
+            if (!soundEnabled || !audioCtx || document.hidden) return;
             const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
@@ -402,13 +437,13 @@
         }
 
         function startBGM() {
-            if (bgmTimer) clearInterval(bgmTimer);
-            if (currentTrack === 'none') return;
+            stopBGM();
+            if (currentTrack === 'none' || document.hidden) return;
 
             const speed = (currentTrack === 'track4' || currentTrack === 'track5' || currentTrack === 'track6') ? 220 : 320;
 
             bgmTimer = setInterval(() => {
-                if (!soundEnabled || !audioCtx || currentTrack === 'none') return;
+                if (!soundEnabled || !audioCtx || currentTrack === 'none' || document.hidden) return;
                 const notes = MUSIC_TRACKS[currentTrack];
                 if (!notes) return;
 
@@ -424,6 +459,7 @@
         }
 
         function changeMusic(t) { currentTrack = t; bgmStep = 0; startBGM(); }
+        
         function selectDifficulty(lvl, el) {
             currentLevel = lvl;
             el.parentElement.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
@@ -440,7 +476,7 @@
         function startGame() { closeModal('start-modal'); initAudio(); resetGame(); }
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function toggleAudio(e) { soundEnabled = e; if (!e && bgmTimer) clearInterval(bgmTimer); else if(e) startBGM(); }
+        function toggleAudio(e) { soundEnabled = e; if (!e) stopBGM(); else startBGM(); }
 
         function resizeCanvas() {
             const rect = container.getBoundingClientRect();
@@ -616,6 +652,21 @@
         }
 
         function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+
+        // Gestione automatica spegnimento e ripresa audio all'uscita/rientro
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopBGM();
+                if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+            } else {
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                startBGM();
+            }
+        });
+
+        window.addEventListener('pagehide', stopBGM);
+        window.addEventListener('blur', stopBGM);
+        window.addEventListener('focus', () => { if (!document.hidden) startBGM(); });
 
         canvas.addEventListener('mousedown', handleInputStart);
         canvas.addEventListener('mousemove', handleInputMove);
