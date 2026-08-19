@@ -239,7 +239,7 @@
 
         <div class="score-boxes">
             <div class="score-card">
-                <span class="score-label">PUNTI</span>
+                <span class="score-label" id="level-display">LIV. 1</span>
                 <div class="score-value" id="score">0</div>
             </div>
             <div class="score-card record">
@@ -270,7 +270,7 @@
 
             <input type="text" id="player-name-input" class="name-input" placeholder="Il tuo nome..." maxlength="15">
 
-            <div class="section-title">DIFFICOLTÀ</div>
+            <div class="section-title">DIFFICOLTÀ INIZIALE</div>
             <div class="options-grid">
                 <div class="option-card" onclick="selectDifficulty(1, this)"><span>🐥</span><span>Facile</span></div>
                 <div class="option-card active" onclick="selectDifficulty(2, this)"><span>🌊</span><span>Medio</span></div>
@@ -290,6 +290,16 @@
         </div>
     </div>
 
+    <!-- Modal Fine Livello / Game Over -->
+    <div id="end-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div style="font-size:2.5rem;" id="end-icon">🎉</div>
+            <div class="modal-title" id="end-title">Livello Completato!</div>
+            <p style="margin: 10px 0; font-size: 0.9rem; color:#b0bec5;" id="end-msg">Ottimo lavoro!</p>
+            <button class="btn-start" id="end-btn" onclick="nextLevelOrRestart()">Continua 🚀</button>
+        </div>
+    </div>
+
     <!-- Modal Impostazioni -->
     <div id="options-modal" class="modal" style="display:none;">
         <div class="modal-content">
@@ -297,7 +307,7 @@
             
             <div class="row-setting">
                 <span>Effetti Sonori</span>
-                <input type="checkbox" id="sound-check" checked onchange="toggleAudio(this.checked)">
+                <input type="checkbox" id="sound-check" checked onchange="toggleSFX(this.checked)">
             </div>
 
             <div class="row-setting">
@@ -328,7 +338,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v5';
+                const CACHE_NAME = 'scoppiabolle-v7';
                 self.addEventListener('install', e => {
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
                 });
@@ -336,7 +346,7 @@
                     e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
                 });
             `;
-            const blob = new Blob([swCode], {type: 'application/javascript'});
+            const blob = new Blob([JSON.stringify(swCode)], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
         }
 
@@ -346,13 +356,18 @@
 
         const COLS = 8, ROWS = 11;
         let BUBBLE_RADIUS = 20;
-        const COLORS = ['#e94560', '#00fff5', '#ffbd39', '#9b59b6', '#2ecc71'];
+        const ALL_COLORS = ['#e94560', '#00fff5', '#ffbd39', '#9b59b6', '#2ecc71', '#ff7043'];
+        let activeColors = [];
 
         let grid = [], currentBubble = null, nextBubble = null, bullet = null;
-        let score = 0;
+        let score = 0, currentStage = 1;
+        let isGameOver = false;
         let highscore = parseInt(localStorage.getItem('scoppiabolle_highscore')) || 0;
         let playerName = localStorage.getItem('scoppiabolle_player') || '';
-        let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2, soundEnabled = true;
+        let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2;
+        
+        let soundEnabled = true;
+        let musicEnabled = true;
         let audioCtx = null, bgmTimer = null, bgmStep = 0, currentTrack = 'track4';
 
         const MUSIC_TRACKS = {
@@ -379,6 +394,8 @@
             playerName = inputVal || 'Giocatore';
             localStorage.setItem('scoppiabolle_player', playerName);
             updatePlayerDisplay();
+            currentStage = 1;
+            score = 0;
             startGame();
         }
 
@@ -427,23 +444,28 @@
                 osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
                 gain.gain.setValueAtTime(0.2, now);
                 gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+            } else if (type === 'win') {
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
             } else {
                 osc.frequency.setValueAtTime(500, now);
                 osc.frequency.exponentialRampToValueAtTime(180, now + 0.15);
                 gain.gain.setValueAtTime(0.3, now);
                 gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
             }
-            osc.start(now); osc.stop(now + 0.15);
+            osc.start(now); osc.stop(now + (type === 'win' ? 0.3 : 0.15));
         }
 
         function startBGM() {
             stopBGM();
-            if (currentTrack === 'none' || document.hidden) return;
+            if (!musicEnabled || currentTrack === 'none' || document.hidden) return;
 
             const speed = (currentTrack === 'track4' || currentTrack === 'track5' || currentTrack === 'track6') ? 220 : 320;
 
             bgmTimer = setInterval(() => {
-                if (!soundEnabled || !audioCtx || currentTrack === 'none' || document.hidden) return;
+                if (!musicEnabled || !audioCtx || currentTrack === 'none' || document.hidden) return;
                 const notes = MUSIC_TRACKS[currentTrack];
                 if (!notes) return;
 
@@ -458,7 +480,14 @@
             }, speed);
         }
 
-        function changeMusic(t) { currentTrack = t; bgmStep = 0; startBGM(); }
+        function toggleSFX(enabled) { soundEnabled = enabled; }
+
+        function changeMusic(t) { 
+            currentTrack = t; 
+            musicEnabled = (t !== 'none');
+            bgmStep = 0; 
+            startBGM(); 
+        }
         
         function selectDifficulty(lvl, el) {
             currentLevel = lvl;
@@ -473,10 +502,9 @@
             el.classList.add('active');
         }
 
-        function startGame() { closeModal('start-modal'); initAudio(); resetGame(); }
+        function startGame() { closeModal('start-modal'); closeModal('end-modal'); initAudio(); resetGame(); }
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function toggleAudio(e) { soundEnabled = e; if (!e) stopBGM(); else startBGM(); }
 
         function resizeCanvas() {
             const rect = container.getBoundingClientRect();
@@ -490,7 +518,7 @@
             constructor(x, y, colorIndex) {
                 this.x = x; this.y = y;
                 this.colorIndex = colorIndex;
-                this.color = COLORS[colorIndex];
+                this.color = ALL_COLORS[colorIndex];
                 this.vx = 0; this.vy = 0;
             }
             draw() {
@@ -528,32 +556,53 @@
 
         function initGrid() {
             grid = [];
+            const numColors = Math.min(3 + currentStage, ALL_COLORS.length);
+            activeColors = ALL_COLORS.slice(0, numColors);
+            const initialRows = Math.min(3 + Math.floor(currentStage / 2), 6);
+
             for (let r = 0; r < ROWS; r++) {
                 grid[r] = [];
                 for (let c = 0; c < COLS; c++) {
-                    if (r < 4) {
+                    if (r < initialRows) {
                         const pos = getBubbleTilePos(r, c);
-                        grid[r][c] = new Bubble(pos.x, pos.y, Math.floor(Math.random() * COLORS.length));
+                        grid[r][c] = new Bubble(pos.x, pos.y, Math.floor(Math.random() * activeColors.length));
                     } else grid[r][c] = null;
                 }
             }
         }
 
+        function getRandomGridColor() {
+            const available = [];
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] && !available.includes(grid[r][c].colorIndex)) {
+                        available.push(grid[r][c].colorIndex);
+                    }
+                }
+            }
+            if (available.length > 0) {
+                return available[Math.floor(Math.random() * available.length)];
+            }
+            return Math.floor(Math.random() * activeColors.length);
+        }
+
         function createShooterBubbles() {
             const sy = canvas.height - BUBBLE_RADIUS * 2.2;
-            if (!nextBubble) nextBubble = new Bubble(BUBBLE_RADIUS * 2, sy, Math.floor(Math.random() * COLORS.length));
+            if (!nextBubble) nextBubble = new Bubble(BUBBLE_RADIUS * 2, sy, getRandomGridColor());
             currentBubble = new Bubble(canvas.width / 2, sy, nextBubble.colorIndex);
-            nextBubble = new Bubble(BUBBLE_RADIUS * 2, sy, Math.floor(Math.random() * COLORS.length));
+            nextBubble = new Bubble(BUBBLE_RADIUS * 2, sy, getRandomGridColor());
         }
 
         function resetGame() {
-            score = 0; document.getElementById('score').innerText = score;
-            bullet = null; initGrid(); createShooterBubbles();
+            isGameOver = false;
+            document.getElementById('score').innerText = score;
+            document.getElementById('level-display').innerText = `LIV. ${currentStage}`;
+            bullet = null; nextBubble = null; initGrid(); createShooterBubbles();
         }
 
-        function handleInputStart(e) { initAudio(); if (!bullet) { isAiming = true; updateAim(e); } }
-        function handleInputMove(e) { if (isAiming) updateAim(e); }
-        function handleInputEnd() { if (isAiming && !bullet) { isAiming = false; fireBubble(); } }
+        function handleInputStart(e) { if (isGameOver) return; initAudio(); if (!bullet) { isAiming = true; updateAim(e); } }
+        function handleInputMove(e) { if (isAiming && !isGameOver) updateAim(e); }
+        function handleInputEnd() { if (isAiming && !bullet && !isGameOver) { isAiming = false; fireBubble(); } }
 
         function updateAim(e) {
             const rect = canvas.getBoundingClientRect();
@@ -576,7 +625,6 @@
             if (bullet) {
                 bullet.x += bullet.vx; bullet.y += bullet.vy;
 
-                // Rimbalzo pareti laterali
                 if (bullet.x - BUBBLE_RADIUS <= 0) {
                     bullet.x = BUBBLE_RADIUS;
                     bullet.vx *= -1;
@@ -585,11 +633,12 @@
                     bullet.vx *= -1;
                 }
 
-                // Impatto con soffitto o altre bolle
                 if (bullet.y - BUBBLE_RADIUS <= 10 || checkCollision()) {
                     snapToGrid();
                     bullet = null;
-                    createShooterBubbles();
+                    if (!checkLevelStatus()) {
+                        createShooterBubbles();
+                    }
                 }
             }
         }
@@ -609,7 +658,6 @@
         function snapToGrid() {
             let closestR = 0, closestC = 0, minDist = Infinity;
 
-            // Trova la cella VUOTA più vicina alla posizione di impatto della bolla
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (!grid[r][c]) {
@@ -681,6 +729,54 @@
             }
         }
 
+        function checkLevelStatus() {
+            let count = 0;
+            let overflow = false;
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c]) {
+                        count++;
+                        if (r >= ROWS - 2) overflow = true;
+                    }
+                }
+            }
+
+            if (count === 0) {
+                isGameOver = true;
+                playSound('win');
+                score += 500;
+                document.getElementById('score').innerText = score;
+                document.getElementById('end-icon').innerText = '🎉';
+                document.getElementById('end-title').innerText = `Livello ${currentStage} Superato!`;
+                document.getElementById('end-msg').innerText = `Ottimo lavoro! Preparati per il livello ${currentStage + 1}.`;
+                document.getElementById('end-btn').innerText = 'Prossimo Livello 🚀';
+                openModal('end-modal');
+                return true;
+            } else if (overflow) {
+                isGameOver = true;
+                playSound('pop');
+                document.getElementById('end-icon').innerText = '💥';
+                document.getElementById('end-title').innerText = 'Game Over!';
+                document.getElementById('end-msg').innerText = `Le bolle sono scese troppo! Punteggio finale: ${score}`;
+                document.getElementById('end-btn').innerText = 'Riprova 🔄';
+                openModal('end-modal');
+                return true;
+            }
+            return false;
+        }
+
+        function nextLevelOrRestart() {
+            closeModal('end-modal');
+            if (document.getElementById('end-title').innerText.includes('Superato')) {
+                currentStage++;
+            } else {
+                currentStage = 1;
+                score = 0;
+            }
+            resetGame();
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (let r = 0; r < ROWS; r++) {
@@ -688,14 +784,14 @@
                     if (grid[r] && grid[r][c]) grid[r][c].draw();
                 }
             }
-            if (isAiming && currentLevel !== 3 && currentBubble) {
+            if (isAiming && currentLevel !== 3 && currentBubble && !isGameOver) {
                 ctx.beginPath();
                 ctx.moveTo(currentBubble.x, currentBubble.y);
                 ctx.lineTo(currentBubble.x + Math.cos(aimAngle) * 140, currentBubble.y + Math.sin(aimAngle) * 140);
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 2;
                 ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
             }
-            if (currentBubble) currentBubble.draw();
+            if (currentBubble && !isGameOver) currentBubble.draw();
         }
 
         function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
