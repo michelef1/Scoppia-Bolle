@@ -328,7 +328,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v4';
+                const CACHE_NAME = 'scoppiabolle-v5';
                 self.addEventListener('install', e => {
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
                 });
@@ -344,7 +344,7 @@
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('game-container');
 
-        const COLS = 8, ROWS = 10;
+        const COLS = 8, ROWS = 11;
         let BUBBLE_RADIUS = 20;
         const COLORS = ['#e94560', '#00fff5', '#ffbd39', '#9b59b6', '#2ecc71'];
 
@@ -506,8 +506,8 @@
         function getBubbleTilePos(r, c) {
             const offset = (r % 2 === 1) ? BUBBLE_RADIUS : 0;
             return {
-                x: c * (BUBBLE_RADIUS * 2) + BUBBLE_RADIUS + 10 + offset,
-                y: r * (BUBBLE_RADIUS * 1.75) + BUBBLE_RADIUS + 15
+                x: c * (BUBBLE_RADIUS * 2) + BUBBLE_RADIUS + 5 + offset,
+                y: r * (BUBBLE_RADIUS * 1.732) + BUBBLE_RADIUS + 10
             };
         }
 
@@ -575,9 +575,21 @@
         function update() {
             if (bullet) {
                 bullet.x += bullet.vx; bullet.y += bullet.vy;
-                if (bullet.x - BUBBLE_RADIUS <= 0 || bullet.x + BUBBLE_RADIUS >= canvas.width) bullet.vx *= -1;
-                if (bullet.y - BUBBLE_RADIUS <= 0 || checkCollision()) {
-                    snapToGrid(); bullet = null; createShooterBubbles();
+
+                // Rimbalzo pareti laterali
+                if (bullet.x - BUBBLE_RADIUS <= 0) {
+                    bullet.x = BUBBLE_RADIUS;
+                    bullet.vx *= -1;
+                } else if (bullet.x + BUBBLE_RADIUS >= canvas.width) {
+                    bullet.x = canvas.width - BUBBLE_RADIUS;
+                    bullet.vx *= -1;
+                }
+
+                // Impatto con soffitto o altre bolle
+                if (bullet.y - BUBBLE_RADIUS <= 10 || checkCollision()) {
+                    snapToGrid();
+                    bullet = null;
+                    createShooterBubbles();
                 }
             }
         }
@@ -585,7 +597,10 @@
         function checkCollision() {
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
-                    if (grid[r][c] && Math.hypot(bullet.x - grid[r][c].x, bullet.y - grid[r][c].y) < BUBBLE_RADIUS * 1.7) return true;
+                    if (grid[r][c]) {
+                        const dist = Math.hypot(bullet.x - grid[r][c].x, bullet.y - grid[r][c].y);
+                        if (dist < BUBBLE_RADIUS * 1.85) return true;
+                    }
                 }
             }
             return false;
@@ -593,39 +608,71 @@
 
         function snapToGrid() {
             let closestR = 0, closestC = 0, minDist = Infinity;
+
+            // Trova la cella VUOTA più vicina alla posizione di impatto della bolla
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
-                    const pos = getBubbleTilePos(r, c);
-                    const dist = Math.hypot(bullet.x - pos.x, bullet.y - pos.y);
-                    if (dist < minDist) { minDist = dist; closestR = r; closestC = c; }
+                    if (!grid[r][c]) {
+                        const pos = getBubbleTilePos(r, c);
+                        const dist = Math.hypot(bullet.x - pos.x, bullet.y - pos.y);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closestR = r;
+                            closestC = c;
+                        }
+                    }
                 }
             }
+
             const pos = getBubbleTilePos(closestR, closestC);
-            bullet.x = pos.x; bullet.y = pos.y;
-            grid[closestR][closestC] = bullet;
+            grid[closestR][closestC] = new Bubble(pos.x, pos.y, bullet.colorIndex);
             checkMatches(closestR, closestC);
         }
 
+        function getNeighbors(r, c) {
+            const neighbors = [];
+            const isOdd = (r % 2 === 1);
+            const offsets = isOdd ? [
+                { r: r-1, c: c }, { r: r-1, c: c+1 },
+                { r: r, c: c-1 }, { r: r, c: c+1 },
+                { r: r+1, c: c }, { r: r+1, c: c+1 }
+            ] : [
+                { r: r-1, c: c-1 }, { r: r-1, c: c },
+                { r: r, c: c-1 }, { r: r, c: c+1 },
+                { r: r+1, c: c-1 }, { r: r+1, c: c }
+            ];
+
+            offsets.forEach(o => {
+                if (o.r >= 0 && o.r < ROWS && o.c >= 0 && o.c < COLS) {
+                    neighbors.push(o);
+                }
+            });
+            return neighbors;
+        }
+
         function checkMatches(startR, startC) {
-            const target = grid[startR][startC].colorIndex, matches = [];
+            if (!grid[startR][startC]) return;
+            const targetColor = grid[startR][startC].colorIndex;
+            const matches = [];
             const visited = Array(ROWS).fill().map(() => Array(COLS).fill(false));
 
             function floodFill(r, c) {
-                if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
-                if (visited[r][c] || !grid[r][c] || grid[r][c].colorIndex !== target) return;
-                visited[r][c] = true; matches.push({ r, c });
-                [
-                    { r: r-1, c: c }, { r: r+1, c: c }, { r: r, c: c-1 }, { r: r, c: c+1 },
-                    { r: r-1, c: c + (r % 2 === 1 ? 1 : -1) }, { r: r+1, c: c + (r % 2 === 1 ? 1 : -1) }
-                ].forEach(n => floodFill(n.r, n.c));
+                if (visited[r][c] || !grid[r][c] || grid[r][c].colorIndex !== targetColor) return;
+                visited[r][c] = true;
+                matches.push({ r, c });
+
+                const neighbors = getNeighbors(r, c);
+                neighbors.forEach(n => floodFill(n.r, n.c));
             }
 
             floodFill(startR, startC);
+
             if (matches.length >= 3) {
                 playSound('pop');
                 matches.forEach(m => { grid[m.r][m.c] = null; });
                 score += matches.length * 10;
                 document.getElementById('score').innerText = score;
+
                 if (score > highscore) {
                     highscore = score;
                     localStorage.setItem('scoppiabolle_highscore', highscore);
@@ -653,7 +700,6 @@
 
         function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
 
-        // Gestione automatica spegnimento e ripresa audio all'uscita/rientro
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 stopBGM();
