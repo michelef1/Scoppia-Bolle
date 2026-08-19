@@ -462,7 +462,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v13';
+                const CACHE_NAME = 'scoppiabolle-v14';
                 self.addEventListener('install', e => {
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
                 });
