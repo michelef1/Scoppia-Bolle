@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Scoppia Bolle">
 
-    <!-- Manifest dinamico generato via Blob -->
+    <!-- Manifest dinamico -->
     <script>
         const manifestData = {
             "name": "Scoppia Bolle",
@@ -276,7 +276,6 @@
     </div>
 
     <script>
-        // Registrazione Service Worker per PWA Offline
         if ('serviceWorker' in navigator) {
             const swCode = `
                 const CACHE_NAME = 'scoppiabolle-v1';
@@ -469,7 +468,7 @@
             const cx = e.touches ? e.touches[0].clientX : e.clientX;
             const cy = e.touches ? e.touches[0].clientY : e.clientY;
             const dx = (cx - rect.left) - currentBubble.x;
-            const dy = (clientY - rect.top) - currentBubble.y;
+            const dy = (cy - rect.top) - currentBubble.y;
             if (dy < -10) aimAngle = Math.atan2(dy, dx);
         }
 
