@@ -84,6 +84,10 @@
             color: var(--accent-color); line-height: 1.1;
         }
 
+        .user-tag {
+            font-size: 0.75rem; color: #81d4fa; font-weight: 600;
+        }
+
         .score-boxes { display: flex; gap: 12px; align-items: center; }
 
         .score-card {
@@ -169,6 +173,12 @@
             background: rgba(77, 182, 172, 0.2);
         }
 
+        .name-input {
+            width: 100%; padding: 10px; margin-top: 10px;
+            background: #102a43; border: 1px solid var(--border-color);
+            border-radius: 10px; color: #fff; font-size: 1rem; text-align: center;
+        }
+
         .btn-start {
             background: linear-gradient(135deg, #11998e, #38ef7d);
             color: #000; border: none; padding: 12px;
@@ -194,7 +204,10 @@
     <header>
         <div style="display:flex; align-items:center; gap:6px;">
             <span style="font-size:1.5rem;">🫧</span>
-            <div class="brand-title">Scoppia<br>Bolle</div>
+            <div>
+                <div class="brand-title">Scoppia Bolle</div>
+                <div class="user-tag" id="player-tag">Giocatore: -</div>
+            </div>
         </div>
 
         <div class="score-boxes">
@@ -226,7 +239,9 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.8rem; color:#b0bec5;">Combina e scoppia le bolle dello stesso colore</div>
+            <div style="font-size:0.8rem; color:#b0bec5;" id="welcome-msg">Inserisci il tuo nome per iniziare!</div>
+
+            <input type="text" id="player-name-input" class="name-input" placeholder="Il tuo nome..." maxlength="15">
 
             <div class="section-title">DIFFICOLTÀ</div>
             <div class="options-grid">
@@ -243,7 +258,7 @@
                 <div class="option-card" onclick="selectScenario('theme-grotta', this)"><span>💎</span><span>Grotta</span></div>
             </div>
 
-            <button class="btn-start" onclick="startGame()">Inizia 🌊</button>
+            <button class="btn-start" onclick="saveNameAndStart()">Inizia 🌊</button>
             <div class="app-credits">App Scoppia Bolle creata da Miki by Gemini</div>
         </div>
     </div>
@@ -262,10 +277,18 @@
                 <span>Musica di Sfondo</span>
                 <select id="music-select" onchange="changeMusic(this.value)">
                     <option value="none">Nessuna</option>
-                    <option value="track1" selected>Traccia 1 - Chill</option>
-                    <option value="track2">Traccia 2 - Retro</option>
-                    <option value="track3">Traccia 3 - Deep</option>
+                    <option value="track1">Chill Breeze</option>
+                    <option value="track2">Retro Wave</option>
+                    <option value="track3">Deep Sea</option>
+                    <option value="track4" selected>☀️ Solar Beat (Allegra)</option>
+                    <option value="track5">🎉 Upbeat Pop (Festa)</option>
+                    <option value="track6">🎈 Bubble Dance (Vivace)</option>
                 </select>
+            </div>
+
+            <div class="row-setting">
+                <span>Modifica Nome</span>
+                <button onclick="changeNamePrompt()" style="background:#102a43; color:#81d4fa; border:1px solid var(--border-color); padding:4px 8px; border-radius:6px;">Cambia</button>
             </div>
 
             <button class="btn-start" onclick="closeModal('options-modal'); openModal('start-modal');" style="background:#1e3d59; color:#fff;">Cambia Livello</button>
@@ -278,7 +301,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v1';
+                const CACHE_NAME = 'scoppiabolle-v2';
                 self.addEventListener('install', e => {
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
                 });
@@ -301,19 +324,49 @@
         let grid = [], currentBubble = null, nextBubble = null, bullet = null;
         let score = 0;
         let highscore = parseInt(localStorage.getItem('scoppiabolle_highscore')) || 0;
+        let playerName = localStorage.getItem('scoppiabolle_player') || '';
         let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2, soundEnabled = true;
-        let audioCtx = null, bgmTimer = null, bgmStep = 0, currentTrack = 'track1';
+        let audioCtx = null, bgmTimer = null, bgmStep = 0, currentTrack = 'track4';
 
+        // Tracce musicali (comprese le nuove opzioni allegre)
         const MUSIC_TRACKS = {
             track1: [261.63, 329.63, 392.00, 523.25, 392.00, 329.63],
             track2: [440.00, 554.37, 659.25, 880.00, 659.25, 554.37],
-            track3: [196.00, 246.94, 293.66, 392.00, 293.66, 246.94]
+            track3: [196.00, 246.94, 293.66, 392.00, 293.66, 246.94],
+            track4: [261.63, 329.63, 392.00, 523.25, 659.25, 523.25, 392.00, 329.63], // Solar Beat
+            track5: [329.63, 392.00, 493.88, 523.25, 587.33, 523.25, 493.88, 392.00], // Upbeat Pop
+            track6: [392.00, 440.00, 493.88, 523.25, 587.33, 659.25, 587.33, 523.25]  // Bubble Dance
         };
 
         document.getElementById('highscore').innerText = highscore;
 
+        function updatePlayerDisplay() {
+            if (playerName) {
+                document.getElementById('player-tag').innerText = playerName;
+                document.getElementById('player-name-input').value = playerName;
+                document.getElementById('welcome-msg').innerText = `Bentornato/a, ${playerName}!`;
+            }
+        }
+
+        function saveNameAndStart() {
+            const inputVal = document.getElementById('player-name-input').value.trim();
+            playerName = inputVal || 'Giocatore';
+            localStorage.setItem('scoppiabolle_player', playerName);
+            updatePlayerDisplay();
+            startGame();
+        }
+
+        function changeNamePrompt() {
+            const newName = prompt("Inserisci il tuo nome:", playerName);
+            if (newName !== null && newName.trim() !== "") {
+                playerName = newName.trim();
+                localStorage.setItem('scoppiabolle_player', playerName);
+                updatePlayerDisplay();
+            }
+        }
+
         function shareRecord() {
-            const text = `Ho realizzato un record di ${highscore} punti a Scoppia Bolle! Riesci a fare di meglio?`;
+            const text = `Ho realizzato un record di ${highscore} punti a Scoppia Bolle! Riesci a fare di meglio, ${playerName}?`;
             if (navigator.share) {
                 navigator.share({ title: 'Scoppia Bolle', text: text, url: window.location.href }).catch(() => {});
             } else {
@@ -352,19 +405,22 @@
             if (bgmTimer) clearInterval(bgmTimer);
             if (currentTrack === 'none') return;
 
+            const speed = (currentTrack === 'track4' || currentTrack === 'track5' || currentTrack === 'track6') ? 220 : 320;
+
             bgmTimer = setInterval(() => {
                 if (!soundEnabled || !audioCtx || currentTrack === 'none') return;
                 const notes = MUSIC_TRACKS[currentTrack];
                 if (!notes) return;
 
                 const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.type = (currentTrack === 'track5' || currentTrack === 'track6') ? 'triangle' : 'sine';
                 osc.frequency.setValueAtTime(notes[bgmStep % notes.length], audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.35);
                 bgmStep++;
-            }, 320);
+            }, speed);
         }
 
         function changeMusic(t) { currentTrack = t; bgmStep = 0; startBGM(); }
@@ -569,7 +625,7 @@
         window.addEventListener('touchend', handleInputEnd);
         window.addEventListener('resize', resizeCanvas);
 
-        window.onload = () => { resizeCanvas(); initGrid(); gameLoop(); };
+        window.onload = () => { resizeCanvas(); updatePlayerDisplay(); initGrid(); gameLoop(); };
     </script>
 </body>
 </html>
