@@ -201,11 +201,15 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            padding: 0;
-            margin-left: 1px;
+            padding: 8px;
+            margin: -8px -6px -8px 4px;
+            border-radius: 50%;
+            transition: background 0.15s;
         }
 
-        .share-btn svg { width: 12px; height: 12px; fill: #38ef7d; }
+        .share-btn:active { background: rgba(56, 239, 125, 0.25); }
+
+        .share-btn svg { width: 14px; height: 14px; fill: #38ef7d; }
 
         .menu-btn {
             background: rgba(15, 32, 50, 0.8);
@@ -341,6 +345,7 @@
                         </button>
                     </div>
                     <div class="score-value" id="highscore">1090</div>
+                    <div id="highscore-level" style="font-size:0.6rem; color:#b0bec5; margin-top:1px; white-space:nowrap;"></div>
                 </div>
             </div>
 
@@ -450,7 +455,7 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.0</span></div>
+            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.1</span></div>
             <p style="margin:14px 0; font-size:0.85rem; color:#cfd8dc; line-height:1.5;">
                 Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi. Punta, spara, abbina i colori e scala i livelli!
             </p>
@@ -462,7 +467,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v15';
+                const CACHE_NAME = 'scoppiabolle-v16';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -508,8 +513,10 @@
         let particles = [];
         let floatingTexts = [];
         let highscore = parseInt(localStorage.getItem('scoppiabolle_highscore')) || 0;
+        let highscoreLevel = parseInt(localStorage.getItem('scoppiabolle_highscore_level')) || 0;
         let playerName = localStorage.getItem('scoppiabolle_player') || '';
         let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2;
+        const DIFFICULTY_LABELS = { 1: '🐥 Facile', 2: '🌊 Media', 3: '🔥 Difficile' };
         
         let soundEnabled = true;
         let musicEnabled = true;
@@ -527,7 +534,23 @@
             track6: { root: 349.23, scale: [0, 2, 4, 7, 9, 11, 9, 7], tempo: 190, wave: 'square',   filter: 2000, padChord: [0, 3, 7] }
         };
 
-        document.getElementById('highscore').innerText = highscore;
+        function updateHighscoreDisplay() {
+            document.getElementById('highscore').innerText = highscore;
+            const label = document.getElementById('highscore-level');
+            label.innerText = DIFFICULTY_LABELS[highscoreLevel] || '';
+        }
+
+        function registerHighscore() {
+            if (score > highscore) {
+                highscore = score;
+                highscoreLevel = currentLevel;
+                localStorage.setItem('scoppiabolle_highscore', highscore);
+                localStorage.setItem('scoppiabolle_highscore_level', highscoreLevel);
+                updateHighscoreDisplay();
+            }
+        }
+
+        updateHighscoreDisplay();
 
         function updatePlayerDisplay() {
             if (playerName) {
@@ -902,9 +925,14 @@
 
         function initGrid() {
             grid = [];
-            const numColors = Math.min(3 + currentStage, ALL_COLORS.length);
+            // La difficoltà iniziale (Facile/Media/Difficile) fissa il punto di partenza,
+            // poi ogni livello superato la aumenta ulteriormente.
+            const baseColors = currentLevel === 1 ? 3 : currentLevel === 2 ? 4 : 5;
+            const numColors = Math.min(baseColors + Math.floor((currentStage - 1) / 2), ALL_COLORS.length);
             activeColors = ALL_COLORS.slice(0, numColors);
-            const initialRows = Math.min(3 + Math.floor(currentStage / 2), 6);
+
+            const baseRows = currentLevel === 1 ? 3 : currentLevel === 2 ? 4 : 5;
+            const initialRows = Math.min(baseRows + Math.floor((currentStage - 1) / 2), 8);
 
             for (let r = 0; r < ROWS; r++) {
                 grid[r] = [];
@@ -959,8 +987,14 @@
             if (dy < -10) aimAngle = Math.atan2(dy, dx);
         }
 
+        function getBubbleSpeed() {
+            const base = currentLevel === 1 ? 11 : currentLevel === 2 ? 14 : 17;
+            const stageBonus = Math.min((currentStage - 1) * 1, 9);
+            return Math.min(base + stageBonus, 26);
+        }
+
         function fireBubble() {
-            const speed = currentLevel === 1 ? 12 : currentLevel === 2 ? 16 : 20;
+            const speed = getBubbleSpeed();
             bullet = currentBubble;
             bullet.vx = Math.cos(aimAngle) * speed;
             bullet.vy = Math.sin(aimAngle) * speed;
@@ -1078,11 +1112,7 @@
                     spawnFloatingText(pos.x, pos.y, `+${matchPoints}`, '#ffffff');
                 }
 
-                if (score > highscore) {
-                    highscore = score;
-                    localStorage.setItem('scoppiabolle_highscore', highscore);
-                    document.getElementById('highscore').innerText = highscore;
-                }
+                registerHighscore();
 
                 dropFloatingBubbles();
             }
@@ -1124,11 +1154,7 @@
                 score += bonus;
                 document.getElementById('score').innerText = score;
                 spawnFloatingText(canvas.width / 2, canvas.height / 2, `Bonus +${bonus}!`, '#ffb74d');
-                if (score > highscore) {
-                    highscore = score;
-                    localStorage.setItem('scoppiabolle_highscore', highscore);
-                    document.getElementById('highscore').innerText = highscore;
-                }
+                registerHighscore();
             }
         }
 
@@ -1150,6 +1176,7 @@
                 playSound('win');
                 score += 500;
                 document.getElementById('score').innerText = score;
+                registerHighscore();
                 document.getElementById('end-icon').innerText = '🎉';
                 document.getElementById('end-title').innerText = `Livello ${currentStage} Superato!`;
                 document.getElementById('end-msg').innerText = `Ottimo lavoro! Preparati per il livello ${currentStage + 1}.`;
