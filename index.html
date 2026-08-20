@@ -238,8 +238,6 @@
             padding-bottom: 10px;
         }
 
-        /* Su schermi più larghi (PC/tablet) il tabellone si ingrandisce
-           per non restare piccolo e isolato in mezzo a tanto spazio vuoto */
         @media (min-width: 700px) {
             header { max-width: 520px; }
             #game-container { max-width: 520px; }
@@ -441,7 +439,8 @@
                 <p style="margin-bottom:10px;">🎯 <strong>Mira e spara:</strong> tocca e trascina sullo schermo per puntare, rilascia per lanciare la bolla.</p>
                 <p style="margin-bottom:10px;">🫧 <strong>Abbina i colori:</strong> forma un gruppo di 3 o più bolle dello stesso colore per farle scoppiare.</p>
                 <p style="margin-bottom:10px;">🪂 <strong>Bolle fluttuanti:</strong> le bolle rimaste senza appoggio dopo uno scoppio cadono e valgono punti bonus!</p>
-                <p style="margin-bottom:10px;">⚠️ <strong>Attenzione al limite:</strong> se le bolle scendono troppo in basso, la partita finisce.</p>
+                <p style="margin-bottom:10px;">⚠️ <strong>Attenzione al limite:</strong> se le bolle toccano la riga tratteggiata per più di 2 secondi, la partita finisce.</p>
+                <p style="margin-bottom:10px;">⏱️ <strong>Discesa a tempo:</strong> le file scendono se non fai scoppiare bolle entro il tempo limite (Facile 8s, Medio 6s, Difficile 4s).</p>
                 <p style="margin-bottom:10px;">🏆 <strong>Livelli:</strong> superando un livello aumentano i colori in gioco e la difficoltà.</p>
                 <p style="margin-bottom:10px;">🔮 <strong>Prossima bolla:</strong> guarda l'anteprima accanto al lanciatore per pianificare il tiro.</p>
                 <p>🎨 <strong>Scenari e musica:</strong> personalizza l'ambientazione e la colonna sonora dal menu Opzioni.</p>
@@ -455,7 +454,7 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.1</span></div>
+            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.3</span></div>
             <p style="margin:14px 0; font-size:0.85rem; color:#cfd8dc; line-height:1.5;">
                 Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi. Punta, spara, abbina i colori e scala i livelli!
             </p>
@@ -467,7 +466,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v16';
+                const CACHE_NAME = 'scoppiabolle-v18';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -486,9 +485,6 @@
             const blob = new Blob([JSON.stringify(swCode)], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
 
-            // Quando un nuovo service worker prende il controllo, ricarica la pagina
-            // così gli aggiornamenti (es. layout, musica) si vedono subito senza dover
-            // chiudere manualmente tutte le schede.
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (refreshing) return;
@@ -518,13 +514,19 @@
         let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2;
         const DIFFICULTY_LABELS = { 1: '🐥 Facile', 2: '🌊 Media', 3: '🔥 Difficile' };
         
+        // Timer e Logica Riga di limite
+        let dropTimer = null;
+        let dropTimeLimit = 6000;
+        let lastDropTime = Date.now();
+        let dangerLineY = 0;
+        let touchLineStartTime = null;
+        let isLineBlinking = false;
+
         let soundEnabled = true;
         let musicEnabled = true;
         let audioCtx = null, bgmTimer = null, padTimer = null, bgmStep = 0, currentTrack = 'track4';
         let musicFilter = null, musicMasterGain = null, musicDelay = null, musicFeedback = null, musicWetGain = null, musicCompressor = null;
 
-        // Profili musicali generativi: root (Hz), scala (semitoni), tempo arpeggio (ms),
-        // forma d'onda, taglio filtro lowpass e accordo del pad (in semitoni sulla root/2).
         const MUSIC_PROFILES = {
             track1: { root: 261.63, scale: [0, 3, 5, 7, 10, 7, 5, 3], tempo: 420, wave: 'sine',     filter: 1200, padChord: [0, 7, 12] },
             track2: { root: 220.00, scale: [0, 2, 3, 7, 9, 7, 3, 2],  tempo: 300, wave: 'sawtooth', filter: 1600, padChord: [0, 7, 10] },
@@ -533,6 +535,17 @@
             track5: { root: 392.00, scale: [0, 2, 4, 5, 7, 9, 11, 9], tempo: 200, wave: 'triangle', filter: 2400, padChord: [0, 4, 7] },
             track6: { root: 349.23, scale: [0, 2, 4, 7, 9, 11, 9, 7], tempo: 190, wave: 'square',   filter: 2000, padChord: [0, 3, 7] }
         };
+
+        function getDropIntervalByDifficulty() {
+            if (currentLevel === 1) return 8000;
+            if (currentLevel === 2) return 6000;
+            return 4000;
+        }
+
+        function resetDropTimer() {
+            dropTimeLimit = getDropIntervalByDifficulty();
+            lastDropTime = Date.now();
+        }
 
         function updateHighscoreDisplay() {
             document.getElementById('highscore').innerText = highscore;
@@ -595,8 +608,6 @@
             if (audioCtx.state === 'suspended' && document.visibilityState === 'visible') {
                 audioCtx.resume();
             }
-            // Avvia la musica solo se non sta già suonando, altrimenti ogni tiro
-            // la farebbe ripartire da capo interrompendo il ritmo.
             if (firstInit || !bgmTimer) startBGM();
         }
 
@@ -606,8 +617,6 @@
         }
 
         function silenceMusicGraph() {
-            // Azzera rapidamente il volume per tagliare di netto eventuali code sonore
-            // della traccia precedente, evitando che si sovrappongano alla nuova.
             if (!audioCtx || !musicMasterGain || !musicWetGain) return;
             const now = audioCtx.currentTime;
             musicMasterGain.gain.cancelScheduledValues(now);
@@ -625,7 +634,6 @@
             musicFilter.frequency.value = 1800;
             musicFilter.Q.value = 0.7;
 
-            // Compressore finale per evitare distorsione/clipping ("audio frizzato")
             musicCompressor = audioCtx.createDynamicsCompressor();
             musicCompressor.threshold.value = -18;
             musicCompressor.knee.value = 20;
@@ -634,12 +642,10 @@
             musicCompressor.release.value = 0.25;
             musicCompressor.connect(audioCtx.destination);
 
-            // Percorso "secco" (dry): suono diretto, pulito
             musicMasterGain = audioCtx.createGain();
             musicMasterGain.gain.value = 0.9;
             musicMasterGain.connect(musicCompressor);
 
-            // Percorso "wet" (eco/delay), completamente separato dal dry per evitare loop doppi
             musicDelay = audioCtx.createDelay();
             musicDelay.delayTime.value = 0.28;
             musicFeedback = audioCtx.createGain();
@@ -775,8 +781,6 @@
 
         function resizeCanvas() {
             const rect = container.getBoundingClientRect();
-            // I limiti massimi crescono su schermi più larghi (PC/tablet),
-            // così il tabellone non resta piccolo e isolato su desktop.
             const maxW = window.innerWidth >= 1000 ? 580 : (window.innerWidth >= 700 ? 500 : 400);
             const maxH = window.innerWidth >= 1000 ? 780 : (window.innerWidth >= 700 ? 660 : 560);
             canvas.width = Math.min(rect.width - 20, maxW);
@@ -784,6 +788,8 @@
             const radWidth = canvas.width / (COLS * 2.15);
             const radHeight = (canvas.height - 80) / (ROWS * 1.732);
             BUBBLE_RADIUS = Math.floor(Math.min(radWidth, radHeight));
+            // Spostata la riga di limite più in alto (da 3.8 a 5.5 raggi dal fondo)
+            dangerLineY = canvas.height - BUBBLE_RADIUS * 5.5;
             updateGridPositions();
         }
 
@@ -925,8 +931,6 @@
 
         function initGrid() {
             grid = [];
-            // La difficoltà iniziale (Facile/Media/Difficile) fissa il punto di partenza,
-            // poi ogni livello superato la aumenta ulteriormente.
             const baseColors = currentLevel === 1 ? 3 : currentLevel === 2 ? 4 : 5;
             const numColors = Math.min(baseColors + Math.floor((currentStage - 1) / 2), ALL_COLORS.length);
             activeColors = ALL_COLORS.slice(0, numColors);
@@ -967,8 +971,34 @@
             nextBubble = new Bubble(BUBBLE_RADIUS * 2, sy, getRandomGridColor());
         }
 
+        function shiftGridDown() {
+            let overflow = false;
+            for (let c = 0; c < COLS; c++) {
+                if (grid[ROWS - 1][c]) overflow = true;
+            }
+
+            for (let r = ROWS - 1; r > 0; r--) {
+                grid[r] = grid[r - 1];
+            }
+
+            grid[0] = [];
+            for (let c = 0; c < COLS; c++) {
+                const pos = getBubbleTilePos(0, c);
+                grid[0][c] = new Bubble(pos.x, pos.y, Math.floor(Math.random() * activeColors.length));
+            }
+
+            updateGridPositions();
+
+            if (overflow) {
+                triggerGameOver("Le bolle hanno riempito lo schermo!");
+            }
+        }
+
         function resetGame() {
             isGameOver = false;
+            touchLineStartTime = null;
+            isLineBlinking = false;
+            resetDropTimer();
             document.getElementById('score').innerText = score;
             document.getElementById('level-display').innerText = `LIV. ${currentStage}`;
             bullet = null; nextBubble = null; initGrid(); createShooterBubbles();
@@ -1003,6 +1033,17 @@
 
         function update() {
             updateEffects();
+
+            if (!isGameOver) {
+                const now = Date.now();
+                if (now - lastDropTime >= dropTimeLimit) {
+                    shiftGridDown();
+                    lastDropTime = now;
+                }
+
+                checkLineTouch(now);
+            }
+
             if (bullet) {
                 bullet.x += bullet.vx; bullet.y += bullet.vy;
 
@@ -1022,6 +1063,43 @@
                     }
                 }
             }
+        }
+
+        function checkLineTouch(now) {
+            let isTouching = false;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c]) {
+                        if (grid[r][c].y + BUBBLE_RADIUS >= dangerLineY) {
+                            isTouching = true;
+                            break;
+                        }
+                    }
+                }
+                if (isTouching) break;
+            }
+
+            if (isTouching) {
+                if (!touchLineStartTime) {
+                    touchLineStartTime = now;
+                    isLineBlinking = true;
+                } else if (now - touchLineStartTime >= 2000) {
+                    triggerGameOver("Le bolle hanno superato la linea di limite!");
+                }
+            } else {
+                touchLineStartTime = null;
+                isLineBlinking = false;
+            }
+        }
+
+        function triggerGameOver(reason) {
+            isGameOver = true;
+            playSound('pop');
+            document.getElementById('end-icon').innerText = '💥';
+            document.getElementById('end-title').innerText = 'Game Over!';
+            document.getElementById('end-msg').innerText = `${reason} Punteggio finale: ${score}`;
+            document.getElementById('end-btn').innerText = 'Riprova 🔄';
+            openModal('end-modal');
         }
 
         function checkCollision() {
@@ -1112,8 +1190,8 @@
                     spawnFloatingText(pos.x, pos.y, `+${matchPoints}`, '#ffffff');
                 }
 
+                resetDropTimer();
                 registerHighscore();
-
                 dropFloatingBubbles();
             }
         }
@@ -1160,13 +1238,11 @@
 
         function checkLevelStatus() {
             let count = 0;
-            let overflow = false;
 
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (grid[r][c]) {
                         count++;
-                        if (r >= ROWS - 2) overflow = true;
                     }
                 }
             }
@@ -1181,15 +1257,6 @@
                 document.getElementById('end-title').innerText = `Livello ${currentStage} Superato!`;
                 document.getElementById('end-msg').innerText = `Ottimo lavoro! Preparati per il livello ${currentStage + 1}.`;
                 document.getElementById('end-btn').innerText = 'Prossimo Livello 🚀';
-                openModal('end-modal');
-                return true;
-            } else if (overflow) {
-                isGameOver = true;
-                playSound('pop');
-                document.getElementById('end-icon').innerText = '💥';
-                document.getElementById('end-title').innerText = 'Game Over!';
-                document.getElementById('end-msg').innerText = `Le bolle sono scese troppo! Punteggio finale: ${score}`;
-                document.getElementById('end-btn').innerText = 'Riprova 🔄';
                 openModal('end-modal');
                 return true;
             }
@@ -1207,8 +1274,46 @@
             resetGame();
         }
 
+        function drawDangerLine() {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(0, dangerLineY);
+            ctx.lineTo(canvas.width, dangerLineY);
+
+            if (isLineBlinking) {
+                const blink = Math.floor(Date.now() / 200) % 2 === 0;
+                ctx.strokeStyle = blink ? '#ff4d4d' : 'transparent';
+                ctx.lineWidth = 3;
+            } else {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = 1.5;
+            }
+
+            ctx.setLineDash([6, 6]);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawTimerBar() {
+            if (isGameOver) return;
+            const elapsed = Date.now() - lastDropTime;
+            const remainingRatio = Math.max(0, 1 - (elapsed / dropTimeLimit));
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fillRect(10, 5, canvas.width - 20, 4);
+
+            ctx.fillStyle = remainingRatio < 0.3 ? '#ff4d4d' : '#4db6ac';
+            ctx.fillRect(10, 5, (canvas.width - 20) * remainingRatio, 4);
+            ctx.restore();
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawTimerBar();
+            drawDangerLine();
+
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (grid[r] && grid[r][c]) grid[r][c].draw();
