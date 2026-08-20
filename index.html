@@ -329,7 +329,6 @@
 
         <div class="right-header">
             <div class="score-boxes">
-                <!-- Box Livello Corrente Aggiornato -->
                 <div class="score-card">
                     <span class="score-label" id="level-display">LIV. 1</span>
                     <span class="score-label" style="color: #b0bec5; font-size: 0.55rem; margin-top: 1px;">PUNTI</span>
@@ -457,7 +456,7 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.3</span></div>
+            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.4</span></div>
             <p style="margin:14px 0; font-size:0.85rem; color:#cfd8dc; line-height:1.5;">
                 Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi. Punta, spara, abbina i colori e scala i livelli!
             </p>
@@ -469,7 +468,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v19';
+                const CACHE_NAME = 'scoppiabolle-v20';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -502,7 +501,9 @@
 
         const COLS = 8, ROWS = 15;
         let BUBBLE_RADIUS = 16;
-        const ALL_COLORS = ['#e94560', '#00fff5', '#ffbd39', '#9b59b6', '#2ecc71', '#ff7043'];
+        
+        // Elenco completo colori: Rosso, Celeste, Giallo, Viola, Verde, Blu Scuro
+        const ALL_COLORS = ['#e94560', '#00fff5', '#ffbd39', '#9b59b6', '#2ecc71', '#1e88e5'];
         let activeColors = [];
 
         let grid = [], currentBubble = null, nextBubble = null, bullet = null;
@@ -517,7 +518,6 @@
         let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2;
         const DIFFICULTY_LABELS = { 1: '🐥 Facile', 2: '🌊 Medio', 3: '🔥 Difficile' };
         
-        // Timer e Logica Riga di limite
         let dropTimer = null;
         let dropTimeLimit = 6000;
         let lastDropTime = Date.now();
@@ -933,9 +933,8 @@
 
         function initGrid() {
             grid = [];
-            const baseColors = currentLevel === 1 ? 3 : currentLevel === 2 ? 4 : 5;
-            const numColors = Math.min(baseColors + Math.floor((currentStage - 1) / 2), ALL_COLORS.length);
-            activeColors = ALL_COLORS.slice(0, numColors);
+            // Utilizza tutti i 6 colori dell'array ALL_COLORS
+            activeColors = ALL_COLORS;
 
             const baseRows = currentLevel === 1 ? 3 : currentLevel === 2 ? 4 : 5;
             const initialRows = Math.min(baseRows + Math.floor((currentStage - 1) / 2), 8);
