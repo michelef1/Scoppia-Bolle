@@ -329,9 +329,12 @@
 
         <div class="right-header">
             <div class="score-boxes">
+                <!-- Box Livello Corrente Aggiornato -->
                 <div class="score-card">
                     <span class="score-label" id="level-display">LIV. 1</span>
+                    <span class="score-label" style="color: #b0bec5; font-size: 0.55rem; margin-top: 1px;">PUNTI</span>
                     <div class="score-value" id="score">0</div>
+                    <div id="current-level-difficulty" style="font-size:0.6rem; color:#b0bec5; margin-top:1px; white-space:nowrap;">🌊 Medio</div>
                 </div>
                 
                 <div class="score-card record">
@@ -466,7 +469,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v18';
+                const CACHE_NAME = 'scoppiabolle-v19';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -512,7 +515,7 @@
         let highscoreLevel = parseInt(localStorage.getItem('scoppiabolle_highscore_level')) || 0;
         let playerName = localStorage.getItem('scoppiabolle_player') || '';
         let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2;
-        const DIFFICULTY_LABELS = { 1: '🐥 Facile', 2: '🌊 Media', 3: '🔥 Difficile' };
+        const DIFFICULTY_LABELS = { 1: '🐥 Facile', 2: '🌊 Medio', 3: '🔥 Difficile' };
         
         // Timer e Logica Riga di limite
         let dropTimer = null;
@@ -788,7 +791,6 @@
             const radWidth = canvas.width / (COLS * 2.15);
             const radHeight = (canvas.height - 80) / (ROWS * 1.732);
             BUBBLE_RADIUS = Math.floor(Math.min(radWidth, radHeight));
-            // Spostata la riga di limite più in alto (da 3.8 a 5.5 raggi dal fondo)
             dangerLineY = canvas.height - BUBBLE_RADIUS * 5.5;
             updateGridPositions();
         }
@@ -1001,6 +1003,7 @@
             resetDropTimer();
             document.getElementById('score').innerText = score;
             document.getElementById('level-display').innerText = `LIV. ${currentStage}`;
+            document.getElementById('current-level-difficulty').innerText = DIFFICULTY_LABELS[currentLevel] || '';
             bullet = null; nextBubble = null; initGrid(); createShooterBubbles();
         }
 
