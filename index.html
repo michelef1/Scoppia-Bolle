@@ -97,8 +97,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            height: 100dvh; /* Altezza dinamica per adattarsi alle barre del browser */
             transition: background 0.4s ease;
         }
 
@@ -799,18 +797,21 @@
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function resizeCanvas() {
+            // Legge l'altezza realmente visibile del viewport (risolve il problema della barra di Opera)
+            const vh = window.innerHeight;
+            document.getElementById('app-wrapper').style.height = `${vh}px`;
+
             const header = document.querySelector('header');
             const headerHeight = header ? header.offsetHeight : 50;
-            const containerRect = container.getBoundingClientRect();
             
-            // Calcolo dell'altezza disponibile considerando browser con barre dinamiche
-            const availWidth = containerRect.width;
-            const availHeight = containerRect.height;
+            // Calcolo dell'altezza e larghezza disponibili
+            const availWidth = container.clientWidth;
+            const availHeight = vh - headerHeight - 20; 
             
             canvas.width = availWidth;
             canvas.height = availHeight;
             
-            // Calcolo preciso del raggio per far stare tutto il lanciatore a schermo
+            // Calcolo preciso del raggio per far stare tutto il gioco a schermo
             const radWidth = canvas.width / (COLS * 2.15);
             const radHeight = (canvas.height - 70) / (ROWS * 1.732);
             BUBBLE_RADIUS = Math.floor(Math.min(radWidth, radHeight));
