@@ -100,7 +100,6 @@
             transition: background 0.4s ease;
         }
 
-        /* Contenitore adattivo */
         #app-wrapper {
             width: 100%;
             max-width: 460px;
@@ -523,6 +522,8 @@
         let grid = [], currentBubble = null, nextBubble = null, bullet = null;
         let score = 0, currentStage = 1;
         let isGameOver = false;
+        let isPaused = false;
+        let pauseStartTime = 0;
         let fallingBubbles = [];
         let particles = [];
         let floatingTexts = [];
@@ -793,25 +794,44 @@
         }
 
         function startGame() { closeModal('start-modal'); closeModal('end-modal'); initAudio(); resetGame(); }
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        
+        function openModal(id) { 
+            if (!isPaused) {
+                isPaused = true;
+                pauseStartTime = Date.now();
+            }
+            isAiming = false;
+            document.getElementById(id).style.display = 'flex'; 
+        }
+
+        function closeModal(id) { 
+            document.getElementById(id).style.display = 'none'; 
+            
+            // Verifichiamo se ci sono altri modal ancora aperti
+            const openModals = document.querySelectorAll('.modal[style*="display: flex"], .modal[style*="display:flex"]');
+            if (openModals.length === 0 && isPaused) {
+                const pausedDuration = Date.now() - pauseStartTime;
+                lastDropTime += pausedDuration;
+                if (touchLineStartTime) {
+                    touchLineStartTime += pausedDuration;
+                }
+                isPaused = false;
+            }
+        }
 
         function resizeCanvas() {
-            // Legge l'altezza realmente visibile del viewport (risolve il problema della barra di Opera)
             const vh = window.innerHeight;
             document.getElementById('app-wrapper').style.height = `${vh}px`;
 
             const header = document.querySelector('header');
             const headerHeight = header ? header.offsetHeight : 50;
             
-            // Calcolo dell'altezza e larghezza disponibili
             const availWidth = container.clientWidth;
             const availHeight = vh - headerHeight - 20; 
             
             canvas.width = availWidth;
             canvas.height = availHeight;
             
-            // Calcolo preciso del raggio per far stare tutto il gioco a schermo
             const radWidth = canvas.width / (COLS * 2.15);
             const radHeight = (canvas.height - 70) / (ROWS * 1.732);
             BUBBLE_RADIUS = Math.floor(Math.min(radWidth, radHeight));
@@ -1023,6 +1043,7 @@
 
         function resetGame() {
             isGameOver = false;
+            isPaused = false;
             touchLineStartTime = null;
             isLineBlinking = false;
             resetDropTimer();
@@ -1032,9 +1053,9 @@
             bullet = null; nextBubble = null; initGrid(); createShooterBubbles();
         }
 
-        function handleInputStart(e) { if (isGameOver) return; initAudio(); if (!bullet) { isAiming = true; updateAim(e); } }
-        function handleInputMove(e) { if (isAiming && !isGameOver) updateAim(e); }
-        function handleInputEnd() { if (isAiming && !bullet && !isGameOver) { isAiming = false; fireBubble(); } }
+        function handleInputStart(e) { if (isGameOver || isPaused) return; initAudio(); if (!bullet) { isAiming = true; updateAim(e); } }
+        function handleInputMove(e) { if (isAiming && !isGameOver && !isPaused) updateAim(e); }
+        function handleInputEnd() { if (isAiming && !bullet && !isGameOver && !isPaused) { isAiming = false; fireBubble(); } }
 
         function updateAim(e) {
             const rect = canvas.getBoundingClientRect();
@@ -1060,6 +1081,8 @@
         }
 
         function update() {
+            if (isPaused) return;
+
             updateEffects();
 
             if (!isGameOver) {
@@ -1324,7 +1347,7 @@
 
         function drawTimerBar() {
             if (isGameOver) return;
-            const elapsed = Date.now() - lastDropTime;
+            const elapsed = isPaused ? (pauseStartTime - lastDropTime) : (Date.now() - lastDropTime);
             const remainingRatio = Math.max(0, 1 - (elapsed / dropTimeLimit));
 
             ctx.save();
@@ -1347,7 +1370,7 @@
                     if (grid[r] && grid[r][c]) grid[r][c].draw();
                 }
             }
-            if (isAiming && currentLevel !== 3 && currentBubble && !isGameOver) {
+            if (isAiming && currentLevel !== 3 && currentBubble && !isGameOver && !isPaused) {
                 ctx.beginPath();
                 ctx.moveTo(currentBubble.x, currentBubble.y);
                 ctx.lineTo(currentBubble.x + Math.cos(aimAngle) * 140, currentBubble.y + Math.sin(aimAngle) * 140);
@@ -1404,7 +1427,7 @@
         window.addEventListener('touchend', handleInputEnd);
         window.addEventListener('resize', resizeCanvas);
 
-        window.onload = () => { resizeCanvas(); updatePlayerDisplay(); initGrid(); gameLoop(); };
+        window.onload = () => { resizeCanvas(); updatePlayerDisplay(); initGrid(); openModal('start-modal'); gameLoop(); };
     </script>
 </body>
 </html>
