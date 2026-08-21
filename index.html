@@ -92,27 +92,29 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            min-height: 100dvh;
             width: 100vw;
             overflow: hidden;
             transition: background 0.4s ease;
         }
 
-        /* Contenitore unico per centrare sia l'header che il canvas su PC */
+        /* Contenitore unico ottimizzato con Small Viewport Height */
         #app-wrapper {
             width: 100%;
             max-width: 460px;
             height: 100vh;
+            height: 100svh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            padding: 10px 12px;
+            padding: 8px 10px;
             box-sizing: border-box;
         }
 
         header {
             width: 100%;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             padding: 8px 12px;
             display: flex;
             justify-content: space-between;
@@ -249,8 +251,9 @@
             justify-content: center; 
             align-items: center;
             touch-action: none; 
-            padding-bottom: 8px;
+            padding-bottom: 4px;
             min-height: 0;
+            overflow: hidden;
         }
 
         @media (min-width: 700px) {
@@ -332,7 +335,7 @@
 <body>
 
     <div id="app-wrapper">
-        <header>
+        <header id="app-header">
             <div class="brand-container">
                 <span style="font-size:1.2rem;">🫧</span>
                 <div class="brand-text">
@@ -471,7 +474,7 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.4</span></div>
+            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.5</span></div>
             <p style="margin:14px 0; font-size:0.85rem; color:#cfd8dc; line-height:1.5;">
                 Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi. Punta, spara, abbina i colori e scala i livelli!
             </p>
@@ -483,7 +486,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v20';
+                const CACHE_NAME = 'scoppiabolle-v21';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -798,19 +801,24 @@
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function resizeCanvas() {
+            const windowH = window.innerHeight;
+            const headerElem = document.getElementById('app-header');
+            const headerH = headerElem ? headerElem.offsetHeight : 50;
+            
+            // Calcolo dell'altezza disponibile per l'area di gioco
+            const availableH = windowH - headerH - 24;
             const rect = container.getBoundingClientRect();
             
-            // Calcolo flessibile del canvas basato sul contenitore visibile
             const targetW = rect.width;
-            const targetH = rect.height;
+            const targetH = Math.min(rect.height, availableH);
             
             canvas.width = targetW;
             canvas.height = targetH;
             
             const radWidth = canvas.width / (COLS * 2.15);
-            const radHeight = (canvas.height - 70) / (ROWS * 1.732);
+            const radHeight = (canvas.height - 60) / (ROWS * 1.732);
             BUBBLE_RADIUS = Math.floor(Math.min(radWidth, radHeight));
-            dangerLineY = canvas.height - BUBBLE_RADIUS * 5.5;
+            dangerLineY = canvas.height - BUBBLE_RADIUS * 4.8;
             updateGridPositions();
         }
 
