@@ -16,7 +16,7 @@
         const manifestData = {
             "name": "Scoppia Bolle",
             "short_name": "ScoppiaBolle",
-            "description": "App Scoppia Bolle creata da Miki by Claude",
+            "description": "App Scoppia Bolle creata da Miki in collaborazione con Claude e Gemini",
             "start_url": "./",
             "display": "standalone",
             "background_color": "#08121e",
@@ -325,7 +325,7 @@
             border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 6px;
         }
 
-        .app-credits { margin-top: 16px; font-size: 0.75rem; color: #81d4fa; font-style: italic; }
+        .app-credits { margin-top: 16px; font-size: 0.72rem; color: #81d4fa; font-style: italic; }
     </style>
 </head>
 <body>
@@ -396,7 +396,7 @@
             </div>
 
             <button class="btn-start" onclick="saveNameAndStart()">Inizia 🌊</button>
-            <div class="app-credits">App Scoppia Bolle creata da Miki by Claude</div>
+            <div class="app-credits">App Scoppia Bolle creata da Miki con Claude e Gemini</div>
         </div>
     </div>
 
@@ -443,7 +443,7 @@
             <button class="btn-start" onclick="closeModal('options-modal'); openModal('info-modal');" style="background:#1e3d59; color:#fff; margin-top:8px;">ℹ️ Info</button>
             <button class="btn-start" onclick="closeModal('options-modal')" style="background:#444; color:#fff; margin-top:8px;">Chiudi</button>
 
-            <div class="app-credits">App Scoppia Bolle creata da Miki by Claude</div>
+            <div class="app-credits">App Scoppia Bolle creata da Miki con Claude e Gemini</div>
         </div>
     </div>
 
@@ -470,12 +470,13 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.5</span></div>
+            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.6</span></div>
             <p style="margin:14px 0; font-size:0.85rem; color:#cfd8dc; line-height:1.5;">
-                Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi.
+                Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi.<br><br>
+                Sviluppato da <strong>Miki</strong> con la collaborazione di <strong>Claude</strong> e <strong>Gemini</strong>.
             </p>
             <button class="btn-start" onclick="closeModal('info-modal')">Chiudi</button>
-            <div class="app-credits">App Scoppia Bolle creata da Miki by Claude</div>
+            <div class="app-credits">App Scoppia Bolle creata da Miki con Claude e Gemini</div>
         </div>
     </div>
 
@@ -807,7 +808,6 @@
         function closeModal(id) { 
             document.getElementById(id).style.display = 'none'; 
             
-            // Verifichiamo se ci sono altri modal ancora aperti
             const openModals = document.querySelectorAll('.modal[style*="display: flex"], .modal[style*="display:flex"]');
             if (openModals.length === 0 && isPaused) {
                 const pausedDuration = Date.now() - pauseStartTime;
@@ -1325,22 +1325,28 @@
             resetGame();
         }
 
+        // Funzione corretta per garantire il lampeggio anche in PWA desktop
         function drawDangerLine() {
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(0, dangerLineY);
             ctx.lineTo(canvas.width, dangerLineY);
 
+            ctx.setLineDash([6, 6]);
+
             if (isLineBlinking) {
-                const blink = Math.floor(Date.now() / 200) % 2 === 0;
-                ctx.strokeStyle = blink ? '#ff4d4d' : 'transparent';
-                ctx.lineWidth = 3;
+                const pulse = Math.sin(Date.now() / 150) > 0;
+                ctx.strokeStyle = pulse ? '#ff1a1a' : 'rgba(255, 26, 26, 0.2)';
+                ctx.lineWidth = 3.5;
+                
+                // Offset dinamico per forzare la GPU a ridisegnare la linea ad ogni frame
+                ctx.lineDashOffset = (Date.now() / 50) % 12;
             } else {
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
                 ctx.lineWidth = 1.5;
+                ctx.lineDashOffset = 0;
             }
 
-            ctx.setLineDash([6, 6]);
             ctx.stroke();
             ctx.restore();
         }
