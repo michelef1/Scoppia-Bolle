@@ -507,7 +507,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v24';
+                const CACHE_NAME = 'scoppiabolle-v26';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
