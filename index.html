@@ -470,7 +470,7 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.6</span></div>
+            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.5</span></div>
             <p style="margin:14px 0; font-size:0.85rem; color:#cfd8dc; line-height:1.5;">
                 Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi.
             </p>
@@ -482,7 +482,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v23';
+                const CACHE_NAME = 'scoppiabolle-v22';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -807,6 +807,7 @@
         function closeModal(id) { 
             document.getElementById(id).style.display = 'none'; 
             
+            // Verifichiamo se ci sono altri modal ancora aperti
             const openModals = document.querySelectorAll('.modal[style*="display: flex"], .modal[style*="display:flex"]');
             if (openModals.length === 0 && isPaused) {
                 const pausedDuration = Date.now() - pauseStartTime;
@@ -1331,10 +1332,9 @@
             ctx.lineTo(canvas.width, dangerLineY);
 
             if (isLineBlinking) {
-                // Imposta il rendering compatibile con GPU mobile (Android)
-                const pulse = Math.sin(Date.now() / 150) > 0;
-                ctx.strokeStyle = pulse ? '#ff4d4d' : 'rgba(255, 77, 77, 0.15)';
-                ctx.lineWidth = 3.5;
+                const blink = Math.floor(Date.now() / 200) % 2 === 0;
+                ctx.strokeStyle = blink ? '#ff4d4d' : 'transparent';
+                ctx.lineWidth = 3;
             } else {
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
                 ctx.lineWidth = 1.5;
