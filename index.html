@@ -494,7 +494,7 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.7</span></div>
+            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.8</span></div>
             <p style="margin:14px 0; font-size:0.85rem; color:#cfd8dc; line-height:1.5;">
                 Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi.
             </p>
@@ -506,7 +506,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v29';
+                const CACHE_NAME = 'scoppiabolle-v30';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -1147,12 +1147,19 @@
         }
 
         // CORREZIONE BUG 2: Game Over immediato appena una pallina si adagia o supera la linea di pericolo
+        // Riga logica oltre la quale si è comunque in game over, indipendentemente
+        // dal calcolo in pixel di dangerLineY. Serve da rete di sicurezza: se per
+        // qualche motivo (tipico delle finestre installate come app) il calcolo in
+        // pixel di canvas/BUBBLE_RADIUS risultasse anche solo temporaneamente
+        // impreciso, questo controllo "a righe" scatta comunque.
+        const DANGER_ROW_INDEX = ROWS - 3;
+
         function checkLineTouch() {
             let isTouching = false;
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (grid[r][c]) {
-                        if (grid[r][c].y + BUBBLE_RADIUS >= dangerLineY) {
+                        if (r >= DANGER_ROW_INDEX || grid[r][c].y + BUBBLE_RADIUS >= dangerLineY) {
                             isTouching = true;
                             break;
                         }
@@ -1422,7 +1429,15 @@
             ctx.restore();
         }
 
-        function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+        function gameLoop() {
+            try {
+                update();
+                draw();
+            } catch (err) {
+                console.error('Errore nel game loop:', err);
+            }
+            requestAnimationFrame(gameLoop);
+        }
 
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
