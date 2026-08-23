@@ -16,7 +16,7 @@
         const manifestData = {
             "name": "Scoppia Bolle",
             "short_name": "ScoppiaBolle",
-            "description": "App Scoppia Bolle creata da Miki by Claude",
+            "description": "App Scoppia Bolle creata da Miki con la collaborazione di Claude e Gemini",
             "start_url": "./",
             "display": "standalone",
             "background_color": "#08121e",
@@ -420,7 +420,7 @@
             </div>
 
             <button class="btn-start" onclick="saveNameAndStart()">Inizia 🌊</button>
-            <div class="app-credits">App Scoppia Bolle creata da Miki by Claude</div>
+            <div class="app-credits">App Scoppia Bolle creata da Miki con la collaborazione di Claude e Gemini</div>
         </div>
     </div>
 
@@ -467,7 +467,7 @@
             <button class="btn-start" onclick="closeModal('options-modal'); openModal('info-modal');" style="background:#1e3d59; color:#fff; margin-top:8px;">ℹ️ Info</button>
             <button class="btn-start" onclick="closeModal('options-modal')" style="background:#444; color:#fff; margin-top:8px;">Chiudi</button>
 
-            <div class="app-credits">App Scoppia Bolle creata da Miki by Claude</div>
+            <div class="app-credits">App Scoppia Bolle creata da Miki con la collaborazione di Claude e Gemini</div>
         </div>
     </div>
 
@@ -494,19 +494,19 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.6</span></div>
+            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">2.7</span></div>
             <p style="margin:14px 0; font-size:0.85rem; color:#cfd8dc; line-height:1.5;">
                 Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi.
             </p>
             <button class="btn-start" onclick="closeModal('info-modal')">Chiudi</button>
-            <div class="app-credits">App Scoppia Bolle creata da Miki by Claude</div>
+            <div class="app-credits">App Scoppia Bolle creata da Miki con la collaborazione di Claude e Gemini</div>
         </div>
     </div>
 
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v28';
+                const CACHE_NAME = 'scoppiabolle-v29';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -545,6 +545,7 @@
         let activeColors = [];
 
         let grid = [], currentBubble = null, nextBubble = null, bullet = null;
+        let rowParityOffset = 0; // BUG 2 FIX: preserva l'allineamento orizzontale delle bolle quando scende una nuova riga
         let score = 0, currentStage = 1;
         let isGameOver = false;
         let isPaused = false;
@@ -979,7 +980,11 @@
         function getBubbleTilePos(r, c) {
             const gridWidth = COLS * (BUBBLE_RADIUS * 2) + BUBBLE_RADIUS;
             const startX = (canvas.width - gridWidth) / 2 + BUBBLE_RADIUS;
-            const offset = (r % 2 === 1) ? BUBBLE_RADIUS : 0;
+            // BUG 2 FIX: la parità usata per lo sfalsamento tiene conto di quante righe
+            // sono già scese dall'alto, così le bolle esistenti restano allineate in
+            // verticale (scendono dritte) invece di "saltare" di mezza bolla di lato
+            // ogni volta che arriva una nuova riga.
+            const offset = ((r + rowParityOffset) % 2 === 1) ? BUBBLE_RADIUS : 0;
             return {
                 x: startX + c * (BUBBLE_RADIUS * 2) + offset,
                 y: r * (BUBBLE_RADIUS * 1.732) + BUBBLE_RADIUS + 10
@@ -1043,6 +1048,8 @@
 
         // CORREZIONE BUG 1: Scalamento orizzontale e ricalcolo coordinata X ad ogni slittamento riga
         function shiftGridDown() {
+            rowParityOffset = 1 - rowParityOffset; // BUG 2 FIX: la parità segue lo scorrimento
+
             for (let r = ROWS - 1; r > 0; r--) {
                 grid[r] = grid[r - 1];
             }
@@ -1060,6 +1067,7 @@
         function resetGame() {
             isGameOver = false;
             isPaused = false;
+            rowParityOffset = 0; // BUG 2 FIX: riparte sempre dallo schema corretto
             if (dangerOverlay) dangerOverlay.classList.remove('blinking');
             resetDropTimer();
             document.getElementById('score').innerText = score;
@@ -1126,6 +1134,15 @@
                         createShooterBubbles();
                     }
                 }
+            }
+
+            // BUG 1 FIX: controllo di sicurezza a ogni fotogramma, oltre ai controlli
+            // puntuali dopo l'aggancio di una bolla o la discesa di una riga. In modalità
+            // app installata, con tiri molto rapidi e ravvicinati, il controllo puntuale
+            // poteva non risultare tempestivo: questo garantisce che il game over scatti
+            // sempre entro un fotogramma da quando le bolle superano la linea.
+            if (!isGameOver) {
+                checkLineTouch();
             }
         }
 
