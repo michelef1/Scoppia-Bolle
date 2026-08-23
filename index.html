@@ -16,7 +16,7 @@
         const manifestData = {
             "name": "Scoppia Bolle",
             "short_name": "ScoppiaBolle",
-            "description": "App Scoppia Bolle creata da Miki con la collaborazione di Claude e Gemini",
+            "description": "App Scoppia Bolle creata da Miki by Claude",
             "start_url": "./",
             "display": "standalone",
             "background_color": "#08121e",
@@ -217,15 +217,12 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            padding: 8px;
-            margin: -8px -6px -8px 4px;
+            padding: 4px;
+            margin: -4px;
             border-radius: 50%;
-            transition: background 0.15s;
         }
 
-        .share-btn:active { background: rgba(56, 239, 125, 0.25); }
-
-        .share-btn svg { width: 14px; height: 14px; fill: #38ef7d; }
+        .share-btn svg { width: 12px; height: 12px; fill: #38ef7d; }
 
         .menu-btn {
             background: rgba(15, 32, 50, 0.8);
@@ -271,7 +268,6 @@
             transition: background 0.4s ease, border-color 0.4s ease;
         }
 
-        /* Overlay CSS ad alte prestazioni per la linea di pericolo */
         #danger-line-overlay {
             position: absolute;
             left: 0;
@@ -424,7 +420,7 @@
             </div>
 
             <button class="btn-start" onclick="saveNameAndStart()">Inizia 🌊</button>
-            <div class="app-credits">App Scoppia Bolle creata da Miki con la collaborazione di Claude e Gemini</div>
+            <div class="app-credits">App Scoppia Bolle creata da Miki by Claude</div>
         </div>
     </div>
 
@@ -471,7 +467,7 @@
             <button class="btn-start" onclick="closeModal('options-modal'); openModal('info-modal');" style="background:#1e3d59; color:#fff; margin-top:8px;">ℹ️ Info</button>
             <button class="btn-start" onclick="closeModal('options-modal')" style="background:#444; color:#fff; margin-top:8px;">Chiudi</button>
 
-            <div class="app-credits">App Scoppia Bolle creata da Miki con la collaborazione di Claude e Gemini</div>
+            <div class="app-credits">App Scoppia Bolle creata da Miki by Claude</div>
         </div>
     </div>
 
@@ -483,9 +479,9 @@
                 <p style="margin-bottom:10px;">🎯 <strong>Mira e spara:</strong> tocca e trascina sullo schermo per puntare, rilascia per lanciare la bolla.</p>
                 <p style="margin-bottom:10px;">🫧 <strong>Abbina i colori:</strong> forma un gruppo di 3 o più bolle dello stesso colore per farle scoppiare.</p>
                 <p style="margin-bottom:10px;">🪂 <strong>Bolle fluttuanti:</strong> le bolle rimaste senza appoggio dopo uno scoppio cadono e valgono punti bonus!</p>
-                <p style="margin-bottom:10px;">⚠️ <strong>Attenzione al limite:</strong> se le bolle toccano la riga tratteggiata per più di 2 secondi, la partita finisce.</p>
+                <p style="margin-bottom:10px;">⚠️ <strong>Attenzione al limite:</strong> se una bolla tocca la riga tratteggiata, la partita finisce immediatamente.</p>
                 <p style="margin-bottom:10px;">⏱️ <strong>Discesa a tempo:</strong> le file scendono se non fai scoppiare bolle entro il tempo limite (Facile 8s, Medio 6s, Difficile 4s).</p>
-                <p style="margin-bottom:10px;">🏆 <strong>Livelli:</strong> superando un livello aumentano le bolle iniziali, la velocità di lancio e la discesa si fa più stretta.</p>
+                <p style="margin-bottom:10px;">🏆 <strong>Livelli:</strong> superando un livello aumentano i colori in gioco e la difficoltà.</p>
                 <p style="margin-bottom:10px;">🔮 <strong>Prossima bolla:</strong> guarda l'anteprima accanto al lanciatore per pianificare il tiro.</p>
                 <p>🎨 <strong>Scenari e musica:</strong> personalizza l'ambientazione e la colonna sonora dal menu Opzioni.</p>
             </div>
@@ -503,14 +499,14 @@
                 Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi.
             </p>
             <button class="btn-start" onclick="closeModal('info-modal')">Chiudi</button>
-            <div class="app-credits">App Scoppia Bolle creata da Miki con la collaborazione di Claude e Gemini</div>
+            <div class="app-credits">App Scoppia Bolle creata da Miki by Claude</div>
         </div>
     </div>
 
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v27';
+                const CACHE_NAME = 'scoppiabolle-v23';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -562,11 +558,9 @@
         let currentLevel = 2, isAiming = false, aimAngle = -Math.PI / 2;
         const DIFFICULTY_LABELS = { 1: '🐥 Facile', 2: '🌊 Medio', 3: '🔥 Difficile' };
         
-        let dropTimer = null;
         let dropTimeLimit = 6000;
         let lastDropTime = Date.now();
         let dangerLineY = 0;
-        let touchLineStartTime = null;
 
         let soundEnabled = true;
         let musicEnabled = true;
@@ -839,9 +833,6 @@
             if (openModals.length === 0 && isPaused) {
                 const pausedDuration = Date.now() - pauseStartTime;
                 lastDropTime += pausedDuration;
-                if (touchLineStartTime) {
-                    touchLineStartTime += pausedDuration;
-                }
                 isPaused = false;
             }
         }
@@ -865,7 +856,6 @@
             
             dangerLineY = canvas.height - BUBBLE_RADIUS * 4.5;
 
-            // Aggiorna la posizione dell'overlay CSS per la linea di allarme
             if (dangerOverlay) {
                 dangerOverlay.style.top = `${canvas.offsetTop + dangerLineY}px`;
             }
@@ -1051,12 +1041,8 @@
             nextBubble = new Bubble(BUBBLE_RADIUS * 2, sy, getRandomGridColor());
         }
 
+        // CORREZIONE BUG 1: Scalamento orizzontale e ricalcolo coordinata X ad ogni slittamento riga
         function shiftGridDown() {
-            let overflow = false;
-            for (let c = 0; c < COLS; c++) {
-                if (grid[ROWS - 1][c]) overflow = true;
-            }
-
             for (let r = ROWS - 1; r > 0; r--) {
                 grid[r] = grid[r - 1];
             }
@@ -1068,16 +1054,12 @@
             }
 
             updateGridPositions();
-
-            if (overflow) {
-                triggerGameOver("Le bolle hanno riempito lo schermo!");
-            }
+            checkLineTouch();
         }
 
         function resetGame() {
             isGameOver = false;
             isPaused = false;
-            touchLineStartTime = null;
             if (dangerOverlay) dangerOverlay.classList.remove('blinking');
             resetDropTimer();
             document.getElementById('score').innerText = score;
@@ -1124,8 +1106,6 @@
                     shiftGridDown();
                     lastDropTime = now;
                 }
-
-                checkLineTouch(now);
             }
 
             if (bullet) {
@@ -1142,14 +1122,15 @@
                 if (bullet.y - BUBBLE_RADIUS <= 10 || checkCollision()) {
                     snapToGrid();
                     bullet = null;
-                    if (!checkLevelStatus()) {
+                    if (!checkLevelStatus() && !isGameOver) {
                         createShooterBubbles();
                     }
                 }
             }
         }
 
-        function checkLineTouch(now) {
+        // CORREZIONE BUG 2: Game Over immediato appena una pallina si adagia o supera la linea di pericolo
+        function checkLineTouch() {
             let isTouching = false;
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
@@ -1163,24 +1144,8 @@
                 if (isTouching) break;
             }
 
-            // Ricalcola sempre la posizione dell'overlay, non solo al resize:
-            // in una finestra installata come app (che non genera mai un evento
-            // "resize" successivo al primo caricamento) questo evita che la barra
-            // resti bloccata in una posizione sbagliata calcolata troppo presto.
-            if (dangerOverlay) {
-                dangerOverlay.style.top = `${canvas.offsetTop + dangerLineY}px`;
-            }
-
             if (isTouching) {
-                if (!touchLineStartTime) {
-                    touchLineStartTime = now;
-                    if (dangerOverlay) dangerOverlay.classList.add('blinking');
-                } else if (now - touchLineStartTime >= 2000) {
-                    triggerGameOver("Le bolle hanno superato la linea di limite!");
-                }
-            } else {
-                touchLineStartTime = null;
-                if (dangerOverlay) dangerOverlay.classList.remove('blinking');
+                triggerGameOver("Le bolle hanno toccato la riga di pericolo!");
             }
         }
 
@@ -1226,7 +1191,9 @@
 
             const pos = getBubbleTilePos(closestR, closestC);
             grid[closestR][closestC] = new Bubble(pos.x, pos.y, bullet.colorIndex);
+            
             checkMatches(closestR, closestC);
+            checkLineTouch();
         }
 
         function getNeighbors(r, c) {
@@ -1369,12 +1336,11 @@
         }
 
         function drawDangerLine() {
-            // Disegna unicamente la linea di sfondo neutra sul Canvas
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(0, dangerLineY);
             ctx.lineTo(canvas.width, dangerLineY);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.strokeStyle = 'rgba(255, 77, 77, 0.6)';
             ctx.lineWidth = 1.5;
             ctx.setLineDash([6, 6]);
             ctx.stroke();
@@ -1463,21 +1429,7 @@
         window.addEventListener('touchend', handleInputEnd);
         window.addEventListener('resize', resizeCanvas);
 
-        window.onload = () => {
-            resizeCanvas();
-            updatePlayerDisplay();
-            initGrid();
-            openModal('start-modal');
-            gameLoop();
-
-            // Ricalcola le dimensioni poco dopo il caricamento: in una finestra
-            // installata come app (senza un resize successivo del browser) il
-            // primo calcolo può avvenire prima che il layout sia del tutto stabile.
-            if (document.fonts && document.fonts.ready) {
-                document.fonts.ready.then(resizeCanvas).catch(() => {});
-            }
-            setTimeout(resizeCanvas, 300);
-        };
+        window.onload = () => { resizeCanvas(); updatePlayerDisplay(); initGrid(); openModal('start-modal'); gameLoop(); };
     </script>
 </body>
 </html>
