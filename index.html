@@ -1252,7 +1252,11 @@
 
         function getNeighbors(r, c) {
             const neighbors = [];
-            const isOdd = (r % 2 === 1);
+            // La griglia usa lo stesso sfalsamento visuale di getBubbleTilePos().
+            // Dopo ogni discesa di una riga rowParityOffset cambia: usare solo
+            // r % 2 qui rompe la connettività reale delle bolle e può impedire
+            // lo scoppio di gruppi dello stesso colore (soprattutto dopo più tiri).
+            const isOdd = ((r + rowParityOffset) % 2 === 1);
             const offsets = isOdd ? [
                 { r: r-1, c: c }, { r: r-1, c: c+1 },
                 { r: r, c: c-1 }, { r: r, c: c+1 },
