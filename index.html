@@ -494,7 +494,7 @@
         <div class="modal-content">
             <div style="font-size:2.2rem;">🫧</div>
             <div class="modal-title">Scoppia Bolle</div>
-            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">3.0</span></div>
+            <div style="font-size:0.85rem; color:#b0bec5; margin-top:6px;">Versione <span id="app-version">3.1</span></div>
             <p style="margin:14px 0; font-size:0.85rem; color:#cfd8dc; line-height:1.5;">
                 Bubble shooter marino con scoppio a catena, bolle fluttuanti, particelle e musica generativa lo-fi.
             </p>
@@ -506,7 +506,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v33';
+                const CACHE_NAME = 'scoppiabolle-v34';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -861,7 +861,7 @@
             // installate come app), il raggio delle bolle veniva "vincolato dalla
             // larghezza" e la griglia risultava troppo corta per raggiungere mai la
             // linea: il game over per riempimento non poteva scattare.
-            const DANGER_ROW = ROWS - 2;
+            const DANGER_ROW = ROWS - 1;
             dangerLineY = DANGER_ROW * (BUBBLE_RADIUS * 1.732) + BUBBLE_RADIUS + 10;
 
             if (dangerOverlay) {
