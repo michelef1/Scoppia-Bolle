@@ -270,23 +270,23 @@
         }
 
         #game-container {
-            flex: 1; 
-            width: 100%; 
-            position: relative; 
+            flex: 1;
+            width: 100%;
+            position: relative;
             display: flex;
-            justify-content: center; 
+            justify-content: center;
             align-items: center;
-            touch-action: none; 
-            padding-bottom: 2px;
+            touch-action: none;
+            padding: 2px 0;
             min-height: 0;
             overflow: hidden;
         }
 
+        /* Desktop: il campo mantiene un rapporto simile a quello mobile,
+           evitando il canvas troppo alto che deformava la partita su PC. */
         @media (min-width: 700px) {
-            #app-wrapper { max-width: 500px; }
-        }
-        @media (min-width: 1000px) {
             #app-wrapper { max-width: 540px; }
+            #game-container { align-items: center; }
         }
 
         canvas {
@@ -296,6 +296,7 @@
             display: block;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
             transition: background 0.4s ease, border-color 0.4s ease;
+            flex: 0 0 auto;
         }
 
         #danger-line-overlay {
@@ -536,7 +537,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'scoppiabolle-v36';
+                const CACHE_NAME = 'scoppiabolle-v37';
                 self.addEventListener('install', e => {
                     self.skipWaiting();
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
@@ -874,16 +875,34 @@
 
             const header = document.querySelector('header');
             const headerHeight = header ? header.offsetHeight : 50;
-            
-            const availWidth = container.clientWidth;
-            const availHeight = vh - headerHeight - 20; 
-            
-            canvas.width = availWidth;
-            canvas.height = availHeight;
-            
+
+            // Il vecchio codice assegnava al canvas tutta l'altezza disponibile.
+            // Su PC questo produceva un campo molto alto rispetto alla larghezza.
+            // Manteniamo invece un rapporto controllato, senza cambiare la logica
+            // del gioco e senza deformare le coordinate della mira.
+            const availWidth = Math.max(160, container.clientWidth);
+            const availHeight = Math.max(320, vh - headerHeight - 20);
+            const isDesktop = window.matchMedia('(min-width: 700px)').matches;
+            const targetAspect = isDesktop ? 1.55 : 1.65; // altezza / larghezza
+
+            let boardWidth = availWidth;
+            let boardHeight = boardWidth * targetAspect;
+
+            // Se la finestra è bassa, riduciamo il campo mantenendo comunque
+            // il rapporto corretto. La larghezza segue automaticamente.
+            if (boardHeight > availHeight) {
+                boardHeight = availHeight;
+                boardWidth = Math.min(availWidth, boardHeight / targetAspect);
+            }
+
+            canvas.width = Math.max(160, Math.floor(boardWidth));
+            canvas.height = Math.max(320, Math.floor(boardHeight));
+
+            // Il raggio viene calcolato sul campo realmente visualizzato, così
+            // PC e Android usano la stessa geometria logica.
             const radWidth = canvas.width / (COLS * 2.15);
             const radHeight = (canvas.height - 70) / (ROWS * 1.732);
-            BUBBLE_RADIUS = Math.floor(Math.min(radWidth, radHeight));
+            BUBBLE_RADIUS = Math.max(8, Math.floor(Math.min(radWidth, radHeight)));
             
             // BUG FIX: la linea di pericolo ora è agganciata a una riga precisa della
             // griglia (invece che a una posizione fissa in pixel dal fondo del canvas).
